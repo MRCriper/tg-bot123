@@ -31,17 +31,17 @@ const Label = styled.label`
   color: var(--text-primary);
 `;
 
-const Input = styled.input<{ hasError?: boolean }>`
+const Input = styled.input<{ $hasError?: boolean }>`
   padding: 12px 16px;
   border-radius: 8px;
-  border: 1px solid ${props => props.hasError ? 'var(--error)' : 'var(--input-border)'};
+  border: 1px solid ${props => props.$hasError ? 'var(--error)' : 'var(--input-border)'};
   background-color: var(--input-bg);
   color: var(--text-primary);
   font-size: 1rem;
   
   &:focus {
     outline: none;
-    border-color: ${props => props.hasError ? 'var(--error)' : 'var(--accent)'};
+    border-color: ${props => props.$hasError ? 'var(--error)' : 'var(--accent)'};
   }
 `;
 
@@ -175,7 +175,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             id="telegramUsername"
             type="text" 
             placeholder="@username"
-            hasError={!!errors.telegramUsername}
+            $hasError={!!errors.telegramUsername}
             {...register('telegramUsername', { 
               required: 'Telegram username обязателен для заполнения',
               pattern: {

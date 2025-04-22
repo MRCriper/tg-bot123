@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import ProductList from '../components/ProductList/ProductList';
 import { useCart } from '../hooks/useCart';
 import { Product } from '../types';
+
+// Импортируем изображения
+import img50stars from '../images/50stars.jpg';
+import img100stars from '../images/100stars.jpg';
+import img200stars from '../images/200stars.jpg';
+import img500stars from '../images/500stars.webp';
+import img1000stars from '../images/1000stars.png';
 
 // Демо-данные для пакетов Telegram звезд
 const mockProducts: Product[] = [
@@ -12,7 +19,7 @@ const mockProducts: Product[] = [
     title: '50 Telegram Звезд',
     description: 'Базовый набор звезд для новичков',
     price: 499,
-    image: 'https://via.placeholder.com/300x300?text=⭐️+50',
+    image: img50stars,
     stars: 50
   },
   {
@@ -20,23 +27,23 @@ const mockProducts: Product[] = [
     title: '100 Telegram Звезд',
     description: 'Стандартный набор звезд для активных пользователей',
     price: 899,
-    image: 'https://via.placeholder.com/300x300?text=⭐️+100',
+    image: img100stars,
     stars: 100
   },
   {
     id: 3,
-    title: '200 Telegram Звезд',
+    title: '250 Telegram Звезд',
     description: 'Популярный выбор для общительных пользователей',
     price: 1690,
-    image: 'https://via.placeholder.com/300x300?text=⭐️+200',
-    stars: 200
+    image: img200stars,
+    stars: 250
   },
   {
     id: 4,
     title: '500 Telegram Звезд',
     description: 'Набор для тех, кто ценит внимание и статус',
     price: 3990,
-    image: 'https://via.placeholder.com/300x300?text=⭐️+500',
+    image: img500stars,
     stars: 500
   },
   {
@@ -44,16 +51,8 @@ const mockProducts: Product[] = [
     title: '1000 Telegram Звезд',
     description: 'Премиум набор для настоящих энтузиастов Telegram',
     price: 7490,
-    image: 'https://via.placeholder.com/300x300?text=⭐️+1000',
+    image: img1000stars,
     stars: 1000
-  },
-  {
-    id: 6,
-    title: '2000 Telegram Звезд',
-    description: 'VIP пакет звезд для особых случаев',
-    price: 13990,
-    image: 'https://via.placeholder.com/300x300?text=⭐️+2000',
-    stars: 2000
   }
 ];
 
@@ -62,8 +61,8 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const { cart, addToCart } = useCart();
   
-  // Состояние для хранения товаров (в реальном приложении они загружались бы из API)
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  // Товары для отображения (в реальном приложении они загружались бы из API)
+  const products = mockProducts;
   
   // Обработчик клика по корзине в хедере
   const handleCartClick = () => {
