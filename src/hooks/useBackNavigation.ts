@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTelegram } from './useTelegram';
 
@@ -24,26 +24,53 @@ export function useBackNavigation() {
   // Текущий путь
   const currentPath = location.pathname;
   
-  useEffect(() => {
-    // Определяем, куда должна вести кнопка "назад" для текущего маршрута
-    const backRoute = BACK_ROUTES[currentPath];
-    
-    // Если для текущего маршрута определен маршрут "назад" и он не совпадает с текущим
-    if (backRoute && backRoute !== currentPath) {
-      // Показываем кнопку "назад" и настраиваем обработчик
-      showBackButton();
-      onBackButtonClicked(() => {
-        navigate(backRoute);
-      });
-      
-      // Очистка при размонтировании
-      return () => {
-        hideBackButton();
-      };
-    } else {
-      // Если для текущего маршрута не определен маршрут "назад" или он совпадает с текущим,
-      // скрываем кнопку "назад"
-      hideBackButton();
+  // Функция для определения маршрута "назад"
+  const getBackRoute = useCallback((path: string) => {
+    // Сначала проверяем точное совпадение
+    if (BACK_ROUTES[path]) {
+      return BACK_ROUTES[path];
     }
-  }, [currentPath, navigate, showBackButton, hideBackButton, onBackButtonClicked]);
+    
+    // Если точного совпадения нет, проверяем маршруты с параметрами
+    // Например, /payment/success?orderId=123 должен соответствовать /payment/success
+    for (const route in BACK_ROUTES) {
+      if (path.startsWith(route)) {
+        return BACK_ROUTES[route];
+      }
+    }
+    
+    // Если ничего не найдено, возвращаем главную страницу
+    return '/';
+  }, []);
+  
+  // Настройка кнопки "назад"
+  useEffect(() => {
+    try {
+      // Определяем, куда должна вести кнопка "назад" для текущего маршрута
+      const backRoute = getBackRoute(currentPath);
+      
+      // Если маршрут "назад" не совпадает с текущим
+      if (backRoute !== currentPath) {
+        // Показываем кнопку "назад" и настраиваем обработчик
+        showBackButton();
+        onBackButtonClicked(() => {
+          navigate(backRoute);
+        });
+        
+        // Очистка при размонтировании
+        return () => {
+          try {
+            hideBackButton();
+          } catch (error) {
+            console.error('Ошибка при скрытии кнопки "назад":', error);
+          }
+        };
+      } else {
+        // Если маршрут "назад" совпадает с текущим, скрываем кнопку "назад"
+        hideBackButton();
+      }
+    } catch (error) {
+      console.error('Ошибка при настройке кнопки "назад":', error);
+    }
+  }, [currentPath, navigate, showBackButton, hideBackButton, onBackButtonClicked, getBackRoute]);
 }

@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
+import { TelegramProvider } from './TelegramProvider';
 
 // Создаем клиент для react-query
 const queryClient = new QueryClient();
@@ -13,7 +14,9 @@ interface AppProvidersProps {
 export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <TelegramProvider>
+        {children}
+      </TelegramProvider>
     </QueryClientProvider>
   );
 };

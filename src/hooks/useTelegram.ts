@@ -1,113 +1,172 @@
-import { useEffect, useCallback, useRef } from 'react';
-import WebApp from '@twa-dev/sdk';
+import { useContext, useCallback, useRef } from 'react';
+import { TelegramContext } from '../providers/TelegramProvider';
 
 // Хук для работы с Telegram WebApp API
 export function useTelegram() {
-  // Ссылка на текущий callback для кнопки
+  // Получаем контекст Telegram WebApp
+  const { webApp, isReady, error } = useContext(TelegramContext);
+  
+  // Ссылки на текущие callbacks для кнопок
   const mainButtonCallbackRef = useRef<(() => void) | null>(null);
+  const backButtonCallbackRef = useRef<(() => void) | null>(null);
   
   // Функция для закрытия Telegram WebApp
   const close = useCallback(() => {
-    WebApp.close();
-  }, []);
+    try {
+      if (webApp && isReady) {
+        webApp.close();
+      }
+    } catch (err) {
+      console.error('Error closing Telegram WebApp:', err);
+    }
+  }, [webApp, isReady]);
 
   // Функция для отображения MainButton
   const showMainButton = useCallback((text: string, callback: () => void) => {
-    WebApp.MainButton.setText(text);
-    
-    // Сохраняем ссылку на callback
-    mainButtonCallbackRef.current = callback;
-    
-    WebApp.MainButton.onClick(callback);
-    WebApp.MainButton.show();
-  }, []);
+    try {
+      if (webApp && isReady) {
+        webApp.MainButton.setText(text);
+        
+        // Сохраняем ссылку на callback
+        mainButtonCallbackRef.current = callback;
+        
+        webApp.MainButton.onClick(callback);
+        webApp.MainButton.show();
+      }
+    } catch (err) {
+      console.error('Error showing MainButton:', err);
+    }
+  }, [webApp, isReady]);
 
   // Функция для скрытия MainButton
   const hideMainButton = useCallback(() => {
-    WebApp.MainButton.hide();
-    
-    // Если у нас есть сохраненный callback, передаем его в offClick
-    if (mainButtonCallbackRef.current) {
-      WebApp.MainButton.offClick(mainButtonCallbackRef.current);
-      mainButtonCallbackRef.current = null;
+    try {
+      if (webApp && isReady) {
+        webApp.MainButton.hide();
+        
+        // Если у нас есть сохраненный callback, передаем его в offClick
+        if (mainButtonCallbackRef.current) {
+          webApp.MainButton.offClick(mainButtonCallbackRef.current);
+          mainButtonCallbackRef.current = null;
+        }
+      }
+    } catch (err) {
+      console.error('Error hiding MainButton:', err);
     }
-  }, []);
+  }, [webApp, isReady]);
 
   // Функция для установки цвета MainButton
   const setMainButtonColor = useCallback((color: string, textColor: string) => {
-    WebApp.MainButton.setParams({
-      color,
-      text_color: textColor,
-    });
-  }, []);
+    try {
+      if (webApp && isReady) {
+        webApp.MainButton.setParams({
+          color,
+          text_color: textColor,
+        });
+      }
+    } catch (err) {
+      console.error('Error setting MainButton color:', err);
+    }
+  }, [webApp, isReady]);
 
   // Функция для отображения BackButton
   const showBackButton = useCallback(() => {
-    WebApp.BackButton.show();
-  }, []);
+    try {
+      if (webApp && isReady) {
+        webApp.BackButton.show();
+      }
+    } catch (err) {
+      console.error('Error showing BackButton:', err);
+    }
+  }, [webApp, isReady]);
 
   // Функция для скрытия BackButton
   const hideBackButton = useCallback(() => {
-    WebApp.BackButton.hide();
-  }, []);
-
-  // Ссылка на текущий callback для кнопки назад
-  const backButtonCallbackRef = useRef<(() => void) | null>(null);
+    try {
+      if (webApp && isReady) {
+        webApp.BackButton.hide();
+      }
+    } catch (err) {
+      console.error('Error hiding BackButton:', err);
+    }
+  }, [webApp, isReady]);
 
   // Функция для настройки BackButton
   const onBackButtonClicked = useCallback((callback: () => void) => {
-    // Сначала удаляем все предыдущие обработчики
-    if (backButtonCallbackRef.current) {
-      WebApp.BackButton.offClick(backButtonCallbackRef.current);
+    try {
+      if (webApp && isReady) {
+        // Сначала удаляем все предыдущие обработчики
+        if (backButtonCallbackRef.current) {
+          webApp.BackButton.offClick(backButtonCallbackRef.current);
+        }
+        
+        // Сохраняем ссылку на новый callback
+        backButtonCallbackRef.current = callback;
+        
+        // Затем устанавливаем новый обработчик
+        webApp.BackButton.onClick(callback);
+      }
+    } catch (err) {
+      console.error('Error setting BackButton callback:', err);
     }
-    
-    // Сохраняем ссылку на новый callback
-    backButtonCallbackRef.current = callback;
-    
-    // Затем устанавливаем новый обработчик
-    WebApp.BackButton.onClick(callback);
-  }, []);
+  }, [webApp, isReady]);
 
   // Функция для установки темы приложения (светлая/темная)
   const setThemeParams = useCallback(() => {
-    const colorScheme = WebApp.colorScheme;
-    document.documentElement.setAttribute('data-theme', colorScheme);
-    return colorScheme;
-  }, []);
+    try {
+      if (webApp && isReady) {
+        const colorScheme = webApp.colorScheme;
+        document.documentElement.setAttribute('data-theme', colorScheme);
+        return colorScheme;
+      }
+      return 'light'; // Возвращаем значение по умолчанию
+    } catch (err) {
+      console.error('Error setting theme params:', err);
+      return 'light'; // Возвращаем значение по умолчанию в случае ошибки
+    }
+  }, [webApp, isReady]);
 
   // Функция для получения user data из Telegram
   const getUserData = useCallback(() => {
-    console.log('WebApp.initDataUnsafe:', WebApp.initDataUnsafe);
-    const user = WebApp.initDataUnsafe?.user;
-    console.log('WebApp.initDataUnsafe.user:', user);
-    
-    // Проверяем, запущено ли приложение в Telegram WebApp
-    const isTelegramWebApp = !!WebApp.initData;
-    console.log('isTelegramWebApp (based on WebApp.initData):', isTelegramWebApp);
-    
-    return {
-      id: user?.id,
-      firstName: user?.first_name,
-      lastName: user?.last_name,
-      username: user?.username,
-      isTelegramWebApp: isTelegramWebApp
-    };
-  }, []);
-
-  // Инициализация WebApp при монтировании компонента
-  useEffect(() => {
-    WebApp.ready();
-    WebApp.expand();
-    setThemeParams();
-
-    // Обработчик изменения темы
-    WebApp.onEvent('themeChanged', setThemeParams);
-
-    // Очистка при размонтировании
-    return () => {
-      WebApp.offEvent('themeChanged', setThemeParams);
-    };
-  }, [setThemeParams]);
+    try {
+      if (webApp && isReady) {
+        console.log('WebApp.initDataUnsafe:', webApp.initDataUnsafe);
+        const user = webApp.initDataUnsafe?.user;
+        console.log('WebApp.initDataUnsafe.user:', user);
+        
+        // Проверяем, запущено ли приложение в Telegram WebApp
+        const isTelegramWebApp = !!webApp.initData;
+        console.log('isTelegramWebApp (based on WebApp.initData):', isTelegramWebApp);
+        
+        return {
+          id: user?.id,
+          firstName: user?.first_name,
+          lastName: user?.last_name,
+          username: user?.username,
+          isTelegramWebApp: isTelegramWebApp
+        };
+      }
+      
+      // Возвращаем данные по умолчанию, если WebApp недоступен
+      return {
+        id: undefined,
+        firstName: undefined,
+        lastName: undefined,
+        username: undefined,
+        isTelegramWebApp: false
+      };
+    } catch (err) {
+      console.error('Error getting user data:', err);
+      // Возвращаем данные по умолчанию в случае ошибки
+      return {
+        id: undefined,
+        firstName: undefined,
+        lastName: undefined,
+        username: undefined,
+        isTelegramWebApp: false
+      };
+    }
+  }, [webApp, isReady]);
 
   return {
     close,
@@ -119,9 +178,11 @@ export function useTelegram() {
     onBackButtonClicked,
     setThemeParams,
     getUserData,
-    colorScheme: WebApp.colorScheme,
-    themeParams: WebApp.themeParams,
-    viewportHeight: WebApp.viewportHeight,
-    viewportStableHeight: WebApp.viewportStableHeight,
+    colorScheme: webApp?.colorScheme || 'light',
+    themeParams: webApp?.themeParams || {},
+    viewportHeight: webApp?.viewportHeight || window.innerHeight,
+    viewportStableHeight: webApp?.viewportStableHeight || window.innerHeight,
+    isReady,
+    error
   };
 }
