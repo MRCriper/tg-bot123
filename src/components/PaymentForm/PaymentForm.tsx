@@ -183,18 +183,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               Для оплаты вы будете перенаправлены на защищенную платежную страницу Paysto.
             </PaymentDescription>
             
-            {/* Показываем кнопки только если не в Telegram WebApp */}
-            {!isTelegramWebApp && (
-              <>
-                <PaymentButton onClick={onRedirectToPayment} disabled={isLoading}>
-                  Перейти к оплате
-                </PaymentButton>
-                
-                <PaymentButton onClick={onCancel} style={{ backgroundColor: 'transparent', color: 'var(--text-secondary)' }}>
-                  Отменить
-                </PaymentButton>
-              </>
-            )}
+            {/* Кнопки от приложения полностью удалены, используется только кнопка от Telegram */}
           </>
         )}
         

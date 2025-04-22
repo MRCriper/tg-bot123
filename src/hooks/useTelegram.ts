@@ -51,12 +51,19 @@ export function useTelegram() {
     WebApp.BackButton.hide();
   }, []);
 
+  // Ссылка на текущий callback для кнопки назад
+  const backButtonCallbackRef = useRef<(() => void) | null>(null);
+
   // Функция для настройки BackButton
   const onBackButtonClicked = useCallback((callback: () => void) => {
-    // Сначала удаляем предыдущий обработчик, если он был установлен
-    if (WebApp.BackButton.isVisible) {
-      WebApp.BackButton.offClick(callback);
+    // Сначала удаляем все предыдущие обработчики
+    if (backButtonCallbackRef.current) {
+      WebApp.BackButton.offClick(backButtonCallbackRef.current);
     }
+    
+    // Сохраняем ссылку на новый callback
+    backButtonCallbackRef.current = callback;
+    
     // Затем устанавливаем новый обработчик
     WebApp.BackButton.onClick(callback);
   }, []);

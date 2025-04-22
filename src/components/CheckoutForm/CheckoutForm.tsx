@@ -124,24 +124,32 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   // Состояние для отслеживания, используется ли Telegram WebApp
   const [isTelegramWebApp, setIsTelegramWebApp] = React.useState<boolean>(true);
 
+  // Флаг для отслеживания, был ли уже установлен username
+  const usernameSetRef = React.useRef<boolean>(false);
+
   // При монтировании компонента пытаемся получить данные пользователя из Telegram
   React.useEffect(() => {
     try {
-      const telegramUser = getUserData();
       // Всегда считаем, что мы в Telegram WebApp, чтобы избежать двойных кнопок
       setIsTelegramWebApp(true);
       console.log('CheckoutForm - Forcing isTelegramWebApp to true');
       
-      if (telegramUser) {
-        // Если есть имя пользователя, устанавливаем его в форму
-        if (telegramUser.firstName) {
-          const fullName = [telegramUser.firstName, telegramUser.lastName].filter(Boolean).join(' ');
-          setValue('name', fullName);
-        }
+      // Устанавливаем данные пользователя только при первом рендере
+      if (!usernameSetRef.current) {
+        const telegramUser = getUserData();
         
-        // Если есть username, устанавливаем его в форму, но только при первой загрузке
-        if (telegramUser.username && !dirtyFields.telegramUsername) {
-          setValue('telegramUsername', `@${telegramUser.username}`);
+        if (telegramUser) {
+          // Если есть имя пользователя, устанавливаем его в форму
+          if (telegramUser.firstName) {
+            const fullName = [telegramUser.firstName, telegramUser.lastName].filter(Boolean).join(' ');
+            setValue('name', fullName);
+          }
+          
+          // Если есть username, устанавливаем его в форму только один раз
+          if (telegramUser.username) {
+            setValue('telegramUsername', `@${telegramUser.username}`);
+            usernameSetRef.current = true;
+          }
         }
       }
     } catch (error) {
@@ -214,12 +222,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           </TotalRow>
         </OrderSummary>
         
-        {/* Показываем кнопку только если не в Telegram WebApp */}
-        {!isTelegramWebApp && (
-          <SubmitButton type="submit" disabled={!isValid || isLoading}>
-            {isLoading ? 'Обработка заказа...' : 'Оплатить заказ'}
-          </SubmitButton>
-        )}
+        {/* Кнопка от приложения полностью удалена, используется только кнопка от Telegram */}
       </Form>
     </FormContainer>
   );
