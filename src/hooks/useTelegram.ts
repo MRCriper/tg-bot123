@@ -53,6 +53,11 @@ export function useTelegram() {
 
   // Функция для настройки BackButton
   const onBackButtonClicked = useCallback((callback: () => void) => {
+    // Сначала удаляем предыдущий обработчик, если он был установлен
+    if (WebApp.BackButton.isVisible) {
+      WebApp.BackButton.offClick(callback);
+    }
+    // Затем устанавливаем новый обработчик
     WebApp.BackButton.onClick(callback);
   }, []);
 

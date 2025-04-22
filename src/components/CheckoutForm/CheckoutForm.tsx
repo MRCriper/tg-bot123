@@ -112,7 +112,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const { 
     register, 
     handleSubmit, 
-    formState: { errors, isValid },
+    formState: { errors, isValid, dirtyFields },
     setValue
   } = useForm<UserData>({
     mode: 'onChange',
@@ -122,16 +122,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   });
 
   // Состояние для отслеживания, используется ли Telegram WebApp
-  const [isTelegramWebApp, setIsTelegramWebApp] = React.useState<boolean>(false);
+  const [isTelegramWebApp, setIsTelegramWebApp] = React.useState<boolean>(true);
 
   // При монтировании компонента пытаемся получить данные пользователя из Telegram
   React.useEffect(() => {
     try {
       const telegramUser = getUserData();
-      // Проверяем, запущено ли приложение в Telegram WebApp
-      const isInTelegram = telegramUser?.isTelegramWebApp || false;
-      console.log('CheckoutForm - isInTelegram:', isInTelegram, 'telegramUser:', telegramUser);
-      setIsTelegramWebApp(isInTelegram);
+      // Всегда считаем, что мы в Telegram WebApp, чтобы избежать двойных кнопок
+      setIsTelegramWebApp(true);
+      console.log('CheckoutForm - Forcing isTelegramWebApp to true');
       
       if (telegramUser) {
         // Если есть имя пользователя, устанавливаем его в форму
@@ -140,8 +139,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           setValue('name', fullName);
         }
         
-        // Если есть username, устанавливаем его в форму
-        if (telegramUser.username) {
+        // Если есть username, устанавливаем его в форму, но только при первой загрузке
+        if (telegramUser.username && !dirtyFields.telegramUsername) {
           setValue('telegramUsername', `@${telegramUser.username}`);
         }
       }

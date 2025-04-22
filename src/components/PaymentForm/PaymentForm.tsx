@@ -121,9 +121,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   useEffect(() => {
     try {
       const telegramUser = getUserData();
-      const isInTelegram = telegramUser?.isTelegramWebApp || false;
-      console.log('PaymentForm - isInTelegram:', isInTelegram, 'telegramUser:', telegramUser);
-      setIsTelegramWebApp(isInTelegram);
+      // Всегда считаем, что мы в Telegram WebApp, чтобы избежать двойных кнопок
+      setIsTelegramWebApp(true);
+      console.log('PaymentForm - Forcing isTelegramWebApp to true');
     } catch (error) {
       console.error('Ошибка при получении данных пользователя из Telegram:', error);
     }
