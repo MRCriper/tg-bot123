@@ -24,7 +24,7 @@ const PaymentPage: React.FC = () => {
   useEffect(() => {
     showBackButton();
     onBackButtonClicked(() => {
-      navigate('/checkout');
+      navigate('/cart');
     });
     
     return () => {
