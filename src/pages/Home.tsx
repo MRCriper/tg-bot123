@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import ProductList from '../components/ProductList/ProductList';
 import { useCart } from '../hooks/useCart';
+import { useBackNavigation } from '../hooks/useBackNavigation';
 import { Product } from '../types';
 
 // Импортируем изображения
@@ -60,6 +61,8 @@ const mockProducts: Product[] = [
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { cart, addToCart } = useCart();
+  // Используем хук для управления кнопкой "назад" Telegram
+  useBackNavigation();
   
   // Товары для отображения (в реальном приложении они загружались бы из API)
   const products = mockProducts;

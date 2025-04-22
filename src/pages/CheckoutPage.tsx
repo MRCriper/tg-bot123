@@ -4,7 +4,7 @@ import Header from '../components/Header/Header';
 import CheckoutForm from '../components/CheckoutForm/CheckoutForm';
 import { useCart } from '../hooks/useCart';
 import { usePayment } from '../hooks/usePayment';
-import { useTelegram } from '../hooks/useTelegram';
+import { useBackNavigation } from '../hooks/useBackNavigation';
 import { UserData } from '../types';
 
 // Компонент страницы оформления заказа
@@ -12,19 +12,8 @@ const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
   const { initiatePayment, isLoading } = usePayment();
-  const { onBackButtonClicked, showBackButton, hideBackButton } = useTelegram();
-  
-  // Настраиваем кнопку назад в Telegram WebApp
-  useEffect(() => {
-    showBackButton();
-    onBackButtonClicked(() => {
-      navigate('/cart');
-    });
-    
-    return () => {
-      hideBackButton();
-    };
-  }, [showBackButton, hideBackButton, onBackButtonClicked, navigate]);
+  // Используем хук для управления кнопкой "назад" Telegram
+  useBackNavigation();
   
   // Обработчик отправки формы оформления заказа
   const handleSubmit = async (userData: UserData) => {

@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import Cart from '../components/Cart/Cart';
 import { useCart } from '../hooks/useCart';
+import { useBackNavigation } from '../hooks/useBackNavigation';
 
 // Компонент страницы корзины
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
   const { cart, updateQuantity, removeFromCart } = useCart();
+  // Используем хук для управления кнопкой "назад" Telegram
+  useBackNavigation();
 
   return (
     <>
