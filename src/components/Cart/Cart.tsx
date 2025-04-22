@@ -116,17 +116,6 @@ const TotalRow = styled(SummaryRow)`
   padding-top: 16px;
 `;
 
-const CheckoutButton = styled.button`
-  width: 100%;
-  padding: 14px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background-color: var(--accent);
-  color: white;
-  border-radius: 10px;
-  margin-top: 8px;
-`;
-
 const EmptyCartContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -277,9 +266,6 @@ const Cart: React.FC<CartProps> = ({
           <span>{formatPrice(totalPrice)}</span>
         </TotalRow>
         
-        <CheckoutButton onClick={handleCheckout}>
-          Оформить заказ
-        </CheckoutButton>
       </SummaryContainer>
     </CartContainer>
   );
