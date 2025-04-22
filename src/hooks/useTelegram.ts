@@ -65,12 +65,20 @@ export function useTelegram() {
 
   // Функция для получения user data из Telegram
   const getUserData = useCallback(() => {
+    console.log('WebApp.initDataUnsafe:', WebApp.initDataUnsafe);
     const user = WebApp.initDataUnsafe?.user;
+    console.log('WebApp.initDataUnsafe.user:', user);
+    
+    // Проверяем, запущено ли приложение в Telegram WebApp
+    const isTelegramWebApp = !!WebApp.initData;
+    console.log('isTelegramWebApp (based on WebApp.initData):', isTelegramWebApp);
+    
     return {
       id: user?.id,
       firstName: user?.first_name,
       lastName: user?.last_name,
       username: user?.username,
+      isTelegramWebApp: isTelegramWebApp
     };
   }, []);
 

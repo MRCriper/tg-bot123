@@ -129,7 +129,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     try {
       const telegramUser = getUserData();
       // Проверяем, запущено ли приложение в Telegram WebApp
-      setIsTelegramWebApp(!!telegramUser?.id);
+      const isInTelegram = telegramUser?.isTelegramWebApp || false;
+      console.log('CheckoutForm - isInTelegram:', isInTelegram, 'telegramUser:', telegramUser);
+      setIsTelegramWebApp(isInTelegram);
       
       if (telegramUser) {
         // Если есть имя пользователя, устанавливаем его в форму
@@ -187,7 +189,6 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             type="text" 
             placeholder="@username"
             $hasError={!!errors.telegramUsername}
-            readOnly={isTelegramWebApp}
             {...register('telegramUsername', { 
               required: 'Telegram username обязателен для заполнения',
               pattern: {

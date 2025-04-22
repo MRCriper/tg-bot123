@@ -4,6 +4,7 @@ import Header from '../components/Header/Header';
 import PaymentForm from '../components/PaymentForm/PaymentForm';
 import { useCart } from '../hooks/useCart';
 import { usePayment } from '../hooks/usePayment';
+import { useTelegram } from '../hooks/useTelegram';
 
 // Компонент страницы оплаты
 const PaymentPage: React.FC = () => {
@@ -17,6 +18,19 @@ const PaymentPage: React.FC = () => {
     initiatePayment,
     resetPayment
   } = usePayment();
+  const { onBackButtonClicked, showBackButton, hideBackButton } = useTelegram();
+
+  // Настраиваем кнопку назад в Telegram WebApp
+  useEffect(() => {
+    showBackButton();
+    onBackButtonClicked(() => {
+      navigate('/checkout');
+    });
+    
+    return () => {
+      hideBackButton();
+    };
+  }, [showBackButton, hideBackButton, onBackButtonClicked, navigate]);
 
   // Перенаправляем на главную, если корзина пуста
   useEffect(() => {
