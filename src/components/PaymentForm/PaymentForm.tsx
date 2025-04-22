@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../../hooks/useTelegram';
@@ -114,7 +114,18 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onCancel
 }) => {
   const navigate = useNavigate();
-  const { showMainButton, hideMainButton } = useTelegram();
+  const { showMainButton, hideMainButton, getUserData } = useTelegram();
+  const [isTelegramWebApp, setIsTelegramWebApp] = useState<boolean>(false);
+
+  // Проверяем, запущено ли приложение в Telegram WebApp
+  useEffect(() => {
+    try {
+      const telegramUser = getUserData();
+      setIsTelegramWebApp(!!telegramUser?.id);
+    } catch (error) {
+      console.error('Ошибка при получении данных пользователя из Telegram:', error);
+    }
+  }, [getUserData]);
 
   // При наличии URL оплаты, перенаправляем пользователя
   useEffect(() => {
@@ -170,13 +181,18 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               Для оплаты вы будете перенаправлены на защищенную платежную страницу Paysto.
             </PaymentDescription>
             
-            <PaymentButton onClick={onRedirectToPayment} disabled={isLoading}>
-              Перейти к оплате
-            </PaymentButton>
-            
-            <PaymentButton onClick={onCancel} style={{ backgroundColor: 'transparent', color: 'var(--text-secondary)' }}>
-              Отменить
-            </PaymentButton>
+            {/* Показываем кнопки только если не в Telegram WebApp */}
+            {!isTelegramWebApp && (
+              <>
+                <PaymentButton onClick={onRedirectToPayment} disabled={isLoading}>
+                  Перейти к оплате
+                </PaymentButton>
+                
+                <PaymentButton onClick={onCancel} style={{ backgroundColor: 'transparent', color: 'var(--text-secondary)' }}>
+                  Отменить
+                </PaymentButton>
+              </>
+            )}
           </>
         )}
         

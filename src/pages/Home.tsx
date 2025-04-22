@@ -18,7 +18,7 @@ const mockProducts: Product[] = [
     id: 1,
     title: '50 Telegram Звезд',
     description: 'Базовый набор звезд для новичков',
-    price: 499,
+    price: 75,
     image: img50stars,
     stars: 50
   },
@@ -26,7 +26,7 @@ const mockProducts: Product[] = [
     id: 2,
     title: '100 Telegram Звезд',
     description: 'Стандартный набор звезд для активных пользователей',
-    price: 899,
+    price: 150,
     image: img100stars,
     stars: 100
   },
@@ -34,7 +34,7 @@ const mockProducts: Product[] = [
     id: 3,
     title: '250 Telegram Звезд',
     description: 'Популярный выбор для общительных пользователей',
-    price: 1690,
+    price: 375,
     image: img200stars,
     stars: 250
   },
@@ -42,7 +42,7 @@ const mockProducts: Product[] = [
     id: 4,
     title: '500 Telegram Звезд',
     description: 'Набор для тех, кто ценит внимание и статус',
-    price: 3990,
+    price: 750,
     image: img500stars,
     stars: 500
   },
@@ -50,7 +50,7 @@ const mockProducts: Product[] = [
     id: 5,
     title: '1000 Telegram Звезд',
     description: 'Премиум набор для настоящих энтузиастов Telegram',
-    price: 7490,
+    price: 1500,
     image: img1000stars,
     stars: 1000
   }

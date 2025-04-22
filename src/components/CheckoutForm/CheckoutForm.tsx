@@ -121,15 +121,26 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     }
   });
 
+  // Состояние для отслеживания, используется ли Telegram WebApp
+  const [isTelegramWebApp, setIsTelegramWebApp] = React.useState<boolean>(false);
+
   // При монтировании компонента пытаемся получить данные пользователя из Telegram
   React.useEffect(() => {
     try {
       const telegramUser = getUserData();
+      // Проверяем, запущено ли приложение в Telegram WebApp
+      setIsTelegramWebApp(!!telegramUser?.id);
+      
       if (telegramUser) {
         // Если есть имя пользователя, устанавливаем его в форму
         if (telegramUser.firstName) {
           const fullName = [telegramUser.firstName, telegramUser.lastName].filter(Boolean).join(' ');
           setValue('name', fullName);
+        }
+        
+        // Если есть username, устанавливаем его в форму
+        if (telegramUser.username) {
+          setValue('telegramUsername', `@${telegramUser.username}`);
         }
       }
     } catch (error) {
@@ -176,6 +187,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
             type="text" 
             placeholder="@username"
             $hasError={!!errors.telegramUsername}
+            readOnly={isTelegramWebApp}
             {...register('telegramUsername', { 
               required: 'Telegram username обязателен для заполнения',
               pattern: {
@@ -202,9 +214,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
           </TotalRow>
         </OrderSummary>
         
-        <SubmitButton type="submit" disabled={!isValid || isLoading}>
-          {isLoading ? 'Обработка заказа...' : 'Оплатить заказ'}
-        </SubmitButton>
+        {/* Показываем кнопку только если не в Telegram WebApp */}
+        {!isTelegramWebApp && (
+          <SubmitButton type="submit" disabled={!isValid || isLoading}>
+            {isLoading ? 'Обработка заказа...' : 'Оплатить заказ'}
+          </SubmitButton>
+        )}
       </Form>
     </FormContainer>
   );
