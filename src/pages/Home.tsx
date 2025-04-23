@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import ProductList from '../components/ProductList/ProductList';
@@ -54,6 +54,15 @@ const mockProducts: Product[] = [
     price: 1500,
     image: img1000stars,
     stars: 1000
+  },
+  // Добавляем новый товар для ввода произвольного количества звезд
+  {
+    id: 6,
+    title: 'Свое количество звезд',
+    description: 'Введите желаемое количество звезд для покупки. Цена рассчитывается по курсу 1 звезда = 1,5 рублей.',
+    price: 150, // Начальная цена за 100 звезд (100 * 1.5 = 150)
+    image: img1000stars,
+    stars: 100 // Начальное значение
   }
 ];
 

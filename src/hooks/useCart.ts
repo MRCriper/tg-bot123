@@ -15,7 +15,9 @@ export function useCart() {
   // Расчет общей стоимости корзины
   const calculateTotalPrice = useCallback((items: CartItem[]): number => {
     return items.reduce((total, item) => {
-      return total + (item.product.price * item.quantity);
+      // Расчет цены: 1 звезда = 1,5 рублей, округление вверх
+      const price = Math.ceil(item.product.stars * 1.5) * item.quantity;
+      return total + price;
     }, 0);
   }, []);
 
@@ -30,12 +32,33 @@ export function useCart() {
       let newItems;
       
       if (existingItemIndex >= 0) {
-        // Если товар уже есть, увеличиваем количество
+        // Если товар уже есть
         newItems = [...prevCart.items];
-        newItems[existingItemIndex] = {
-          ...newItems[existingItemIndex],
-          quantity: newItems[existingItemIndex].quantity + 1,
-        };
+        
+        // Для кастомного товара с id=6 (кастомное количество звезд)
+        if (product.id === 6) {
+          // Суммируем количество звезд и обновляем цену
+          const totalStars = newItems[existingItemIndex].product.stars + product.stars;
+          const newPrice = Math.ceil(totalStars * 1.5);
+          
+          // Обновляем товар с новым количеством звезд и ценой
+          newItems[existingItemIndex] = {
+            ...newItems[existingItemIndex],
+            product: {
+              ...newItems[existingItemIndex].product,
+              stars: totalStars,
+              price: newPrice
+            },
+            // Количество товара остается 1
+            quantity: 1
+          };
+        } else {
+          // Для обычных товаров увеличиваем количество
+          newItems[existingItemIndex] = {
+            ...newItems[existingItemIndex],
+            quantity: newItems[existingItemIndex].quantity + 1,
+          };
+        }
       } else {
         // Если товара нет, добавляем новый элемент
         newItems = [...prevCart.items, { product, quantity: 1 }];
@@ -65,6 +88,11 @@ export function useCart() {
 
   // Изменение количества товара в корзине
   const updateQuantity = useCallback((productId: number, quantity: number) => {
+    // Не позволяем изменять количество для кастомного товара (id=6)
+    if (productId === 6) {
+      return;
+    }
+    
     if (quantity <= 0) {
       removeFromCart(productId);
       return;

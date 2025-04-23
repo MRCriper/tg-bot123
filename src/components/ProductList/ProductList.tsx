@@ -58,22 +58,6 @@ const StarIcon = () => (
   </svg>
 );
 
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background-color: var(--input-bg);
-  color: var(--text-primary);
-  margin-bottom: 16px;
-  font-size: 1rem;
-  
-  &:focus {
-    border-color: var(--accent);
-    outline: none;
-  }
-`;
-
 // Пропсы для компонента ProductList
 interface ProductListProps {
   products: Product[];
@@ -82,42 +66,17 @@ interface ProductListProps {
 
 // Компонент для отображения списка товаров
 const ProductList: React.FC<ProductListProps> = ({ products, onAddToCart }) => {
-  const [searchTerm, setSearchTerm] = React.useState('');
-  
-  // Фильтрация товаров по поисковому запросу
-  const filteredProducts = React.useMemo(() => {
-    return products.filter(product => {
-      const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            product.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return matchesSearch;
-    });
-  }, [products, searchTerm]);
-
-  // Обработчик изменения поискового запроса
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
   return (
     <Container>
-      {/* Поисковая строка */}
-      <SearchInput 
-        type="text" 
-        placeholder="Поиск звезд..." 
-        value={searchTerm}
-        onChange={handleSearchChange}
-      />
-      
       <div style={{ textAlign: 'left', padding: '0 16px 16px', color: 'var(--text-secondary)' }}>
         <h2 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Телеграм звезды</h2>
-        <p>Выберите количество звезд для покупки. После оплаты звезды будут переведены на указанный телеграм-аккаунт.</p>
+        <p>Введите желаемое количество звезд для покупки. После оплаты звезды будут переведены на указанный телеграм-аккаунт.</p>
       </div>
 
-      {/* Сетка товаров или сообщение, если товары не найдены */}
-      {filteredProducts.length > 0 ? (
+      {/* Сетка товаров */}
+      {products.length > 0 ? (
         <Grid>
-          {filteredProducts.map(product => (
+          {products.map(product => (
             <ProductCard 
               key={product.id} 
               product={product} 
@@ -128,7 +87,7 @@ const ProductList: React.FC<ProductListProps> = ({ products, onAddToCart }) => {
       ) : (
         <EmptyStateContainer>
           <EmptyStateText>
-            По вашему запросу товары не найдены.
+            Товары не найдены.
           </EmptyStateText>
         </EmptyStateContainer>
       )}

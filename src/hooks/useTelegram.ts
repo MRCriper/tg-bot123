@@ -4,7 +4,7 @@ import { TelegramContext } from '../providers/TelegramProvider';
 // Хук для работы с Telegram WebApp API
 export function useTelegram() {
   // Получаем контекст Telegram WebApp
-  const { webApp, isReady, error } = useContext(TelegramContext);
+  const { webApp, isReady, error, platform } = useContext(TelegramContext);
   
   // Ссылки на текущие callbacks для кнопок
   const mainButtonCallbackRef = useRef<(() => void) | null>(null);
@@ -69,32 +69,51 @@ export function useTelegram() {
     }
   }, [webApp, isReady]);
 
+  // Функция для проверки поддержки BackButton
+  const isBackButtonSupported = useCallback(() => {
+    try {
+      // Проверяем, доступен ли WebApp и его BackButton
+      const hasBackButton = webApp && isReady && typeof webApp.BackButton !== 'undefined';
+      
+      // На iOS и Android BackButton поддерживается всегда, если WebApp доступен
+      // На веб-платформе нужна дополнительная проверка
+      if (platform === 'ios' || platform === 'android') {
+        return webApp && isReady;
+      }
+      
+      return hasBackButton;
+    } catch (err) {
+      console.error('Error checking BackButton support:', err);
+      return false;
+    }
+  }, [webApp, isReady, platform]);
+
   // Функция для отображения BackButton
   const showBackButton = useCallback(() => {
     try {
-      if (webApp && isReady) {
+      if (webApp && isReady && isBackButtonSupported()) {
         webApp.BackButton.show();
       }
     } catch (err) {
       console.error('Error showing BackButton:', err);
     }
-  }, [webApp, isReady]);
+  }, [webApp, isReady, isBackButtonSupported]);
 
   // Функция для скрытия BackButton
   const hideBackButton = useCallback(() => {
     try {
-      if (webApp && isReady) {
+      if (webApp && isReady && isBackButtonSupported()) {
         webApp.BackButton.hide();
       }
     } catch (err) {
       console.error('Error hiding BackButton:', err);
     }
-  }, [webApp, isReady]);
+  }, [webApp, isReady, isBackButtonSupported]);
 
   // Функция для настройки BackButton
   const onBackButtonClicked = useCallback((callback: () => void) => {
     try {
-      if (webApp && isReady) {
+      if (webApp && isReady && isBackButtonSupported()) {
         // Сначала удаляем все предыдущие обработчики
         if (backButtonCallbackRef.current) {
           webApp.BackButton.offClick(backButtonCallbackRef.current);
@@ -109,7 +128,7 @@ export function useTelegram() {
     } catch (err) {
       console.error('Error setting BackButton callback:', err);
     }
-  }, [webApp, isReady]);
+  }, [webApp, isReady, isBackButtonSupported]);
 
   // Функция для установки темы приложения (светлая/темная)
   const setThemeParams = useCallback(() => {
@@ -176,6 +195,7 @@ export function useTelegram() {
     showBackButton,
     hideBackButton,
     onBackButtonClicked,
+    isBackButtonSupported,
     setThemeParams,
     getUserData,
     colorScheme: webApp?.colorScheme || 'light',
@@ -183,6 +203,7 @@ export function useTelegram() {
     viewportHeight: webApp?.viewportHeight || window.innerHeight,
     viewportStableHeight: webApp?.viewportStableHeight || window.innerHeight,
     isReady,
-    error
+    error,
+    platform
   };
 }

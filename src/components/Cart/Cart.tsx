@@ -229,19 +229,27 @@ const Cart: React.FC<CartProps> = ({
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <QuantityControls>
-                  <QuantityButton 
-                    onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                  >
-                    -
-                  </QuantityButton>
-                  <QuantityValue>{item.quantity}</QuantityValue>
-                  <QuantityButton 
-                    onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                  >
-                    +
-                  </QuantityButton>
-                </QuantityControls>
+                {item.product.id === 6 ? (
+                  // Для кастомного товара (звезды) показываем только количество звезд
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    {item.product.stars} звезд
+                  </div>
+                ) : (
+                  // Для обычных товаров показываем кнопки изменения количества
+                  <QuantityControls>
+                    <QuantityButton 
+                      onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                    >
+                      -
+                    </QuantityButton>
+                    <QuantityValue>{item.quantity}</QuantityValue>
+                    <QuantityButton 
+                      onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                    >
+                      +
+                    </QuantityButton>
+                  </QuantityControls>
+                )}
                 
                 <RemoveButton onClick={() => onRemoveItem(item.product.id)}>
                   Удалить
