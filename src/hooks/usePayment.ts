@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { paystoService } from '../services/paystoService';
-import { Cart, PaystoPaymentData, UserData } from '../types';
+import { rocketPayService } from '../services/rocketPayService';
+import { Cart, RocketPaymentData, UserData } from '../types';
 
 // Хук для работы с платежной системой
 export function usePayment() {
@@ -28,17 +28,17 @@ export function usePayment() {
       setOrderId(newOrderId);
 
       // Формируем данные для платежа
-      const paymentData: PaystoPaymentData = {
+      const paymentData: RocketPaymentData = {
         orderId: newOrderId,
         amount: cart.totalPrice,
         description: `Оплата заказа ${newOrderId}`,
-        customerEmail: userData.email || `user_${Date.now()}@example.com`, // Используем дефолтное значение если email не указан
+        customerTelegram: userData.telegramUsername.replace('@', ''), // Убираем @ если он есть
         // URL для перенаправления после оплаты (должен обрабатываться вашим приложением)
         redirectUrl: `${window.location.origin}/payment/success?orderId=${newOrderId}`
       };
 
-      // Отправляем запрос в Paysto
-      const result = await paystoService.initiatePayment(paymentData);
+      // Отправляем запрос в Rocket Pay
+      const result = await rocketPayService.initiatePayment(paymentData);
 
       if (result.success && result.paymentUrl) {
         setPaymentUrl(result.paymentUrl);
@@ -58,7 +58,7 @@ export function usePayment() {
     setIsLoading(true);
     
     try {
-      const statusResult = await paystoService.checkPaymentStatus(checkOrderId);
+      const statusResult = await rocketPayService.checkPaymentStatus(checkOrderId);
       return statusResult;
     } catch (error) {
       console.error('Ошибка при проверке статуса платежа:', error);

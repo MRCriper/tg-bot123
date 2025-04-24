@@ -48,7 +48,7 @@ export enum OrderStatus {
   CANCELLED = "CANCELLED"
 }
 
-// Тип для платежных данных Paysto
+// Тип для платежных данных Paysto (оставлено для обратной совместимости)
 export interface PaystoPaymentData {
   orderId: string;
   amount: number;
@@ -57,8 +57,24 @@ export interface PaystoPaymentData {
   redirectUrl: string;
 }
 
-// Тип для ответа от Paysto
+// Тип для ответа от Paysto (оставлено для обратной совместимости)
 export interface PaystoResponse {
+  success: boolean;
+  paymentUrl?: string;
+  error?: string;
+}
+
+// Тип для платежных данных Rocket Pay
+export interface RocketPaymentData {
+  orderId: string;
+  amount: number;
+  description: string;
+  customerTelegram: string; // Telegram username для перевода звезд
+  redirectUrl: string;
+}
+
+// Тип для ответа от Rocket Pay
+export interface RocketPayResponse {
   success: boolean;
   paymentUrl?: string;
   error?: string;

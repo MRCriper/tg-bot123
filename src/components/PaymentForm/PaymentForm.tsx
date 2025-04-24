@@ -180,7 +180,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         ) : (
           <>
             <PaymentDescription>
-              Для оплаты вы будете перенаправлены на защищенную платежную страницу Paysto.
+              Для оплаты вы будете перенаправлены на защищенную платежную страницу Rocket Pay.
             </PaymentDescription>
             
             {/* Кнопки от приложения полностью удалены, используется только кнопка от Telegram */}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTelegram } from '../../hooks/useTelegram';
-import { paystoService } from '../../services/paystoService';
+import { rocketPayService } from '../../services/rocketPayService';
 
 // Стилизованные компоненты
 const StatusContainer = styled.div`
@@ -174,7 +174,7 @@ const OrderStatus: React.FC = () => {
       
       try {
         // Получаем статус заказа
-        const result = await paystoService.checkPaymentStatus(orderId);
+        const result = await rocketPayService.checkPaymentStatus(orderId);
         
         if (result.success) {
           if (result.status === 'PAID') {
