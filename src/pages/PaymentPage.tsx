@@ -28,11 +28,11 @@ const PaymentPage: React.FC = () => {
     }
   }, [cart.items.length, navigate]);
 
-  // Обработчик перенаправления на платежную страницу Paysto
+  // Обработчик перенаправления на платежную страницу Rocket Pay
   const handleRedirectToPayment = () => {
     if (paymentUrl) {
-      window.open(paymentUrl, '_blank');
-      navigate(`/payment/success?orderId=${orderId}`);
+      // Прямое перенаправление на URL оплаты вместо открытия в новой вкладке
+      window.location.href = paymentUrl;
     }
   };
 

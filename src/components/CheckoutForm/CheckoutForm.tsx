@@ -155,24 +155,34 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     } catch (error) {
       console.error('Ошибка при получении данных пользователя из Telegram:', error);
     }
-    
-    // Показываем кнопку оплаты в Telegram
-    showMainButton('Оплатить заказ', () => {
-      if (isValid) {
-        handleSubmit(onFormSubmit)();
-      }
-    });
-    
-    return () => {
-      hideMainButton();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getUserData, showMainButton, hideMainButton, isValid]);
+  }, [getUserData, setValue]);
 
   // Обработчик отправки формы
   const onFormSubmit: SubmitHandler<UserData> = (data) => {
     onSubmit(data);
   };
+
+  // Настраиваем кнопку Telegram
+  React.useEffect(() => {
+    // Показываем кнопку оплаты в Telegram
+    const handleMainButtonClick = () => {
+      // Вызываем handleSubmit напрямую, который сам проверит валидность формы
+      handleSubmit(onFormSubmit)();
+      
+      // Добавляем логирование для отладки
+      console.log('CheckoutForm - Кнопка "Оплатить заказ" нажата');
+      console.log('CheckoutForm - Форма валидна:', isValid);
+      console.log('CheckoutForm - Поля формы:', {
+        telegramUsername: (document.getElementById('telegramUsername') as HTMLInputElement)?.value
+      });
+    };
+
+    showMainButton('Оплатить заказ', handleMainButtonClick);
+    
+    return () => {
+      hideMainButton();
+    };
+  }, [showMainButton, hideMainButton, handleSubmit, onFormSubmit, isValid]);
 
   // Форматирование цены
   const formatPrice = (price: number): string => {

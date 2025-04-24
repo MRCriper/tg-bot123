@@ -135,20 +135,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       console.log('PaymentForm - Получен URL для оплаты:', paymentUrl);
       
       try {
-        // Для безопасности обычно лучше открывать внешние URL в новой вкладке или использовать redirect
-        const newWindow = window.open(paymentUrl, '_blank');
-        
-        if (newWindow) {
-          console.log('PaymentForm - Окно оплаты успешно открыто');
-        } else {
-          console.error('PaymentForm - Не удалось открыть окно оплаты. Возможно, блокировка всплывающих окон');
-        }
-        
-        // После открытия URL оплаты перенаправляем на страницу статуса заказа
-        console.log('PaymentForm - Перенаправление на страницу статуса заказа:', `/payment/success?orderId=${orderId}`);
-        navigate(`/payment/success?orderId=${orderId}`);
+        // Прямое перенаправление на URL оплаты вместо открытия в новой вкладке
+        window.location.href = paymentUrl;
+        console.log('PaymentForm - Перенаправление на страницу оплаты');
       } catch (error) {
         console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
+        
+        // В случае ошибки перенаправляем на страницу статуса заказа
+        console.log('PaymentForm - Перенаправление на страницу статуса заказа:', `/payment/success?orderId=${orderId}`);
+        navigate(`/payment/success?orderId=${orderId}`);
       }
     }
   }, [paymentUrl, navigate, orderId]);
