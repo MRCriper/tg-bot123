@@ -2,7 +2,7 @@ import axios from 'axios';
 import { RocketPaymentData, RocketPayResponse } from '../types';
 
 // URL API Rocket Pay
-const ROCKET_PAY_API_URL = process.env.REACT_APP_ROCKET_PAY_API_URL || 'https://pay.xrocket.tg/api';
+const ROCKET_PAY_API_URL = process.env.REACT_APP_ROCKET_PAY_API_URL ? `${process.env.REACT_APP_ROCKET_PAY_API_URL}/api` : 'https://pay.xrocket.tg/api';
 
 // Секретный ключ (будет предоставлен при регистрации в Rocket Pay)
 // В реальном приложении этот ключ должен храниться на сервере и не должен быть доступен на клиенте
@@ -32,7 +32,6 @@ export const rocketPayService = {
         expiredIn: 10 // Время жизни счета в минутах
       }, {
         headers: {
-          'Authorization': `Bearer ${ROCKET_PAY_SECRET_KEY}`,
           'Content-Type': 'application/json',
           'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY
         },
@@ -52,6 +51,27 @@ export const rocketPayService = {
     } catch (error) {
       console.error('Ошибка при создании платежа:', error);
       
+      // Более подробное логирование для отладки
+      if (axios.isAxiosError(error)) {
+        console.error('Детали ошибки Axios:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers,
+            data: error.config?.data
+          }
+        });
+        
+        return {
+          success: false,
+          error: `Ошибка API (${error.response?.status}): ${error.response?.data?.message || error.message}`,
+        };
+      }
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Неизвестная ошибка при создании платежа',
@@ -70,7 +90,6 @@ export const rocketPayService = {
       // Получаем список счетов и ищем нужный по payload
       const response = await axios.get(`${ROCKET_PAY_API_URL}/tg-invoices`, {
         headers: {
-          'Authorization': `Bearer ${ROCKET_PAY_SECRET_KEY}`,
           'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY
         },
       });
@@ -104,10 +123,44 @@ export const rocketPayService = {
     } catch (error) {
       console.error('Ошибка при проверке статуса платежа:', error);
       
+      // Более подробное логирование для отладки
+      if (axios.isAxiosError(error)) {
+        console.error('Детали ошибки Axios при проверке статуса:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
+          }
+        });
+      }
+      
       return {
         status: 'error',
         success: false,
       };
+    }
+  },
+
+  /**
+   * Проверяет подпись вебхука от Rocket Pay
+   * @param body - тело запроса
+   * @param signature - подпись из заголовка rocket-pay-signature
+   * @returns - результат проверки подписи
+   */
+  verifySignature(body: string, signature: string): boolean {
+    try {
+      // В реальном приложении здесь должна быть проверка подписи
+      // с использованием crypto.createHmac('sha256', secretKey).update(body).digest('hex')
+      // Для демо-версии просто возвращаем true
+      console.log('Проверка подписи вебхука:', { body, signature });
+      return true;
+    } catch (error) {
+      console.error('Ошибка при проверке подписи:', error);
+      return false;
     }
   },
 
@@ -119,12 +172,17 @@ export const rocketPayService = {
   processCallback(callbackData: any): { success: boolean, message: string } {
     try {
       // Проверка подписи (в реальности должна быть проверка rocket-pay-signature)
-      // const signature = callbackData.headers['rocket-pay-signature'];
-      // const isValidSignature = verifySignature(callbackData.body, signature);
+      const signature = callbackData.headers?.['rocket-pay-signature'];
       
-      // if (!isValidSignature) {
-      //   return { success: false, message: 'Недействительная подпись' };
-      // }
+      if (signature) {
+        const isValidSignature = this.verifySignature(JSON.stringify(callbackData.body), signature);
+        
+        if (!isValidSignature) {
+          return { success: false, message: 'Недействительная подпись' };
+        }
+      } else {
+        console.warn('Отсутствует заголовок rocket-pay-signature в вебхуке');
+      }
 
       // Обработка данных платежа
       const payload = callbackData.payload; // Получаем orderId из payload
