@@ -2,7 +2,12 @@ import axios from 'axios';
 import { RocketPaymentData, RocketPayResponse } from '../types';
 
 // URL API Rocket Pay
-const ROCKET_PAY_API_URL = process.env.REACT_APP_ROCKET_PAY_API_URL ? `${process.env.REACT_APP_ROCKET_PAY_API_URL}/api` : 'https://pay.xrocket.tg/api';
+// Исправляем потенциальное дублирование /api в URL
+const ROCKET_PAY_API_URL = process.env.REACT_APP_ROCKET_PAY_API_URL || 'https://pay.xrocket.tg';
+const API_ENDPOINT = ROCKET_PAY_API_URL.endsWith('/api') ? ROCKET_PAY_API_URL : `${ROCKET_PAY_API_URL}/api`;
+
+// Логируем URL API для отладки
+console.log('Rocket Pay API URL:', API_ENDPOINT);
 
 // Секретный ключ (будет предоставлен при регистрации в Rocket Pay)
 // В реальном приложении этот ключ должен храниться на сервере и не должен быть доступен на клиенте
@@ -19,7 +24,19 @@ export const rocketPayService = {
     try {
       // В реальности запрос должен отправляться через ваш сервер для безопасности
       // Это демо-реализация для наглядности
-      const response = await axios.post(`${ROCKET_PAY_API_URL}/tg-invoices`, {
+      // Добавляем подробное логирование запроса
+      console.log('Отправка запроса на создание tg-invoice:', {
+        url: `${API_ENDPOINT}/tg-invoices`,
+        apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
+        data: {
+          amount: paymentData.amount,
+          description: paymentData.description,
+          callbackUrl: paymentData.redirectUrl,
+          payload: paymentData.orderId
+        }
+      });
+
+      const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, {
         amount: paymentData.amount,
         minPayment: paymentData.amount, // Минимальная сумма платежа (обычно равна amount)
         numPayments: 1, // Количество платежей (по умолчанию 1)
@@ -88,7 +105,13 @@ export const rocketPayService = {
     try {
       // В реальности запрос должен отправляться через ваш сервер для безопасности
       // Получаем список счетов и ищем нужный по payload
-      const response = await axios.get(`${ROCKET_PAY_API_URL}/tg-invoices`, {
+      // Добавляем логирование для отладки
+      console.log('Отправка запроса на получение списка tg-invoices:', {
+        url: `${API_ENDPOINT}/tg-invoices`,
+        apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует'
+      });
+
+      const response = await axios.get(`${API_ENDPOINT}/tg-invoices`, {
         headers: {
           'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY
         },

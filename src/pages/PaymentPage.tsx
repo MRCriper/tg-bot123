@@ -29,10 +29,14 @@ const PaymentPage: React.FC = () => {
   }, [cart.items.length, navigate]);
 
   // Обработчик перенаправления на платежную страницу Rocket Pay
+  // Этот обработчик вызывается при нажатии на кнопку оплаты в Telegram
   const handleRedirectToPayment = () => {
     if (paymentUrl) {
-      // Прямое перенаправление на URL оплаты вместо открытия в новой вкладке
-      window.location.href = paymentUrl;
+      console.log('PaymentPage - Кнопка оплаты нажата, URL:', paymentUrl);
+      // Перенаправление происходит автоматически в компоненте PaymentForm через useEffect
+      // Здесь ничего не делаем, чтобы избежать дублирования перенаправления
+    } else {
+      console.log('PaymentPage - Кнопка оплаты нажата, но URL еще не получен');
     }
   };
 

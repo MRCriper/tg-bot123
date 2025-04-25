@@ -134,17 +134,34 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     if (paymentUrl) {
       console.log('PaymentForm - Получен URL для оплаты:', paymentUrl);
       
-      try {
-        // Прямое перенаправление на URL оплаты вместо открытия в новой вкладке
-        window.location.href = paymentUrl;
-        console.log('PaymentForm - Перенаправление на страницу оплаты');
-      } catch (error) {
-        console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
-        
-        // В случае ошибки перенаправляем на страницу статуса заказа
-        console.log('PaymentForm - Перенаправление на страницу статуса заказа:', `/payment/success?orderId=${orderId}`);
-        navigate(`/payment/success?orderId=${orderId}`);
-      }
+      // Добавляем небольшую задержку перед перенаправлением, чтобы логи успели отобразиться
+      const redirectTimer = setTimeout(() => {
+        try {
+          // Проверяем, что URL начинается с https:// или http://
+          if (paymentUrl.startsWith('https://') || paymentUrl.startsWith('http://')) {
+            // Прямое перенаправление на URL оплаты
+            console.log('PaymentForm - Перенаправление на страницу оплаты');
+            window.location.href = paymentUrl;
+          } else if (paymentUrl.startsWith('tg://')) {
+            // Обработка специальных Telegram URL
+            console.log('PaymentForm - Обнаружен Telegram URL:', paymentUrl);
+            window.location.href = paymentUrl;
+          } else {
+            // Если URL не начинается с https:// или http://, добавляем https://
+            console.log('PaymentForm - Добавление https:// к URL:', paymentUrl);
+            window.location.href = `https://${paymentUrl}`;
+          }
+        } catch (error) {
+          console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
+          
+          // В случае ошибки перенаправляем на страницу статуса заказа
+          console.log('PaymentForm - Перенаправление на страницу статуса заказа:', `/payment/success?orderId=${orderId}`);
+          navigate(`/payment/success?orderId=${orderId}`);
+        }
+      }, 500); // 500 мс задержка
+      
+      // Очистка таймера при размонтировании компонента
+      return () => clearTimeout(redirectTimer);
     }
   }, [paymentUrl, navigate, orderId]);
 
