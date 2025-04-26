@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+  import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../../hooks/useTelegram';
@@ -183,22 +183,40 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     if (paymentUrl) {
       console.log('PaymentForm - Получен URL для оплаты:', paymentUrl);
       
-      // Добавляем небольшую задержку перед перенаправлением, чтобы логи успели отобразиться
+      // Увеличиваем задержку перед перенаправлением для стабильности
       const redirectTimer = setTimeout(() => {
         try {
+          // Проверяем и нормализуем URL
+          let finalUrl = paymentUrl;
+          
           // Проверяем, что URL начинается с https:// или http://
           if (paymentUrl.startsWith('https://') || paymentUrl.startsWith('http://')) {
-            // Прямое перенаправление на URL оплаты
-            console.log('PaymentForm - Перенаправление на страницу оплаты');
-            window.location.href = paymentUrl;
+            // URL уже в правильном формате
+            console.log('PaymentForm - URL в правильном формате, перенаправление на:', finalUrl);
           } else if (paymentUrl.startsWith('tg://')) {
             // Обработка специальных Telegram URL
-            console.log('PaymentForm - Обнаружен Telegram URL:', paymentUrl);
-            window.location.href = paymentUrl;
+            console.log('PaymentForm - Обнаружен Telegram URL:', finalUrl);
           } else {
             // Если URL не начинается с https:// или http://, добавляем https://
-            console.log('PaymentForm - Добавление https:// к URL:', paymentUrl);
-            window.location.href = `https://${paymentUrl}`;
+            finalUrl = `https://${paymentUrl}`;
+            console.log('PaymentForm - Добавление https:// к URL, итоговый URL:', finalUrl);
+          }
+          
+          // Используем window.open вместо window.location.href для более надежного перенаправления
+          const newWindow = window.open(finalUrl, '_self');
+          
+          // Если window.open не сработал, пробуем альтернативный метод
+          if (!newWindow) {
+            console.log('PaymentForm - window.open не сработал, пробуем location.href');
+            window.location.href = finalUrl;
+            
+            // Дополнительная проверка через таймаут
+            setTimeout(() => {
+              if (document.location.href !== finalUrl) {
+                console.log('PaymentForm - Перенаправление через location.href не сработало, пробуем location.replace');
+                window.location.replace(finalUrl);
+              }
+            }, 1000);
           }
         } catch (error) {
           console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
@@ -207,7 +225,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           console.log('PaymentForm - Перенаправление на страницу статуса заказа:', `/payment/success?orderId=${orderId}`);
           navigate(`/payment/success?orderId=${orderId}`);
         }
-      }, 500); // 500 мс задержка
+      }, 1000); // Увеличиваем задержку до 1000 мс для большей стабильности
       
       // Очистка таймера при размонтировании компонента
       return () => clearTimeout(redirectTimer);

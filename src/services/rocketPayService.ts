@@ -71,83 +71,124 @@ export const rocketPayService = {
    * @returns - объект с URL для перенаправления на платежную форму или ошибка
    */
   async initiatePayment(paymentData: RocketPaymentData): Promise<RocketPayResponse> {
-    try {
-      // Конвертируем сумму из рублей в TON
-      const amountTon = await this.convertRubToTon(paymentData.amount);
-      
-      // В реальности запрос должен отправляться через ваш сервер для безопасности
-      // Это демо-реализация для наглядности
-      // Добавляем подробное логирование запроса
-      console.log('Отправка запроса на создание tg-invoice:', {
-        url: `${API_ENDPOINT}/tg-invoices`,
-        apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
-        data: {
-          amount: amountTon,
-          description: paymentData.description,
-          callbackUrl: paymentData.redirectUrl,
-          payload: paymentData.orderId,
-          originalAmountRub: paymentData.amount // Оригинальная сумма в рублях для логирования
-        }
-      });
-
-      const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, {
-        amount: amountTon, // Сумма в TON после конвертации
-        minPayment: amountTon, // Минимальная сумма платежа (обычно равна amount)
-        numPayments: 1, // Количество платежей (по умолчанию 1)
-        currency: "TONCOIN", // Валюта (TON)
-        description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
-        hiddenMessage: `Заказ №${paymentData.orderId} | ${paymentData.customerTelegram}`, // Скрытое сообщение с данными пользователя
-        commentsEnabled: false, // Отключаем комментарии
-        callbackUrl: paymentData.redirectUrl, // URL для перенаправления после оплаты
-        payload: paymentData.orderId, // Дополнительные данные (используем orderId)
-        expiredIn: 30 // Время жизни счета в минутах (увеличено до 30 минут)
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY
-        },
-      });
-
-      if (response.data && response.data.success && response.data.data && response.data.data.link) {
-        return {
-          success: true,
-          paymentUrl: response.data.data.link,
-        };
-      } else {
-        return {
-          success: false,
-          error: 'Ошибка при создании платежа: Не получен URL для оплаты',
-        };
-      }
-    } catch (error) {
-      console.error('Ошибка при создании платежа:', error);
-      
-      // Более подробное логирование для отладки
-      if (axios.isAxiosError(error)) {
-        console.error('Детали ошибки Axios:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          headers: error.response?.headers,
-          config: {
-            url: error.config?.url,
-            method: error.config?.method,
-            headers: error.config?.headers,
-            data: error.config?.data
+    // Максимальное количество попыток
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError: any = null;
+    
+    // Функция для выполнения запроса с повторными попытками
+    const executeWithRetry = async (): Promise<RocketPayResponse> => {
+      try {
+        // Конвертируем сумму из рублей в TON
+        const amountTon = await this.convertRubToTon(paymentData.amount);
+        
+        // Подробное логирование запроса
+        console.log(`Отправка запроса на создание tg-invoice (попытка ${retryCount + 1}/${maxRetries}):`, {
+          url: `${API_ENDPOINT}/tg-invoices`,
+          apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
+          data: {
+            amount: amountTon,
+            description: paymentData.description,
+            callbackUrl: paymentData.redirectUrl,
+            payload: paymentData.orderId,
+            originalAmountRub: paymentData.amount
           }
         });
+
+        // Устанавливаем таймаут для запроса
+        const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, {
+          amount: amountTon, // Сумма в TON после конвертации
+          minPayment: amountTon, // Минимальная сумма платежа (обычно равна amount)
+          numPayments: 1, // Количество платежей (по умолчанию 1)
+          currency: "TONCOIN", // Валюта (TON)
+          description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
+          hiddenMessage: `Заказ №${paymentData.orderId} | ${paymentData.customerTelegram}`, // Скрытое сообщение с данными пользователя
+          commentsEnabled: false, // Отключаем комментарии
+          callbackUrl: paymentData.redirectUrl, // URL для перенаправления после оплаты
+          payload: paymentData.orderId, // Дополнительные данные (используем orderId)
+          expiredIn: 30 // Время жизни счета в минутах (увеличено до 30 минут)
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          timeout: 10000 // Устанавливаем таймаут в 10 секунд
+        });
+
+        // Проверяем ответ
+        if (response.data && response.data.success && response.data.data && response.data.data.link) {
+          console.log('Успешно получен URL для оплаты:', response.data.data.link);
+          return {
+            success: true,
+            paymentUrl: response.data.data.link,
+          };
+        } else {
+          console.error('Ответ API не содержит URL для оплаты:', response.data);
+          return {
+            success: false,
+            error: 'Ошибка при создании платежа: Не получен URL для оплаты',
+          };
+        }
+      } catch (error) {
+        console.error(`Ошибка при создании платежа (попытка ${retryCount + 1}/${maxRetries}):`, error);
         
+        // Подробное логирование ошибки
+        if (axios.isAxiosError(error)) {
+          console.error('Детали ошибки Axios:', {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            headers: error.response?.headers,
+            config: {
+              url: error.config?.url,
+              method: error.config?.method,
+              headers: error.config?.headers,
+              data: error.config?.data
+            }
+          });
+          
+          lastError = error;
+          
+          // Если ошибка связана с сетью или таймаутом, повторяем запрос
+          if (!error.response || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+            throw error; // Пробрасываем ошибку для повторной попытки
+          }
+        }
+        
+        // Возвращаем ошибку
         return {
           success: false,
-          error: `Ошибка API (${error.response?.status}): ${error.response?.data?.message || error.message}`,
+          error: error instanceof Error ? error.message : 'Неизвестная ошибка при создании платежа',
         };
       }
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Неизвестная ошибка при создании платежа',
-      };
+    };
+    
+    // Выполняем запрос с повторными попытками
+    while (retryCount < maxRetries) {
+      try {
+        return await executeWithRetry();
+      } catch (error) {
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          // Экспоненциальная задержка перед повторной попыткой (1с, 2с, 4с, ...)
+          const delay = Math.pow(2, retryCount - 1) * 1000;
+          console.log(`Повторная попытка через ${delay}мс...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
+    
+    // Если все попытки не удались, возвращаем последнюю ошибку
+    console.error('Все попытки создания платежа не удались');
+    return {
+      success: false,
+      error: lastError instanceof Error 
+        ? lastError.message 
+        : 'Не удалось создать платеж после нескольких попыток',
+    };
   },
 
   /**
@@ -156,70 +197,127 @@ export const rocketPayService = {
    * @returns - информация о статусе платежа
    */
   async checkPaymentStatus(orderId: string): Promise<{ status: string, success: boolean }> {
-    try {
-      // В реальности запрос должен отправляться через ваш сервер для безопасности
-      // Получаем список счетов и ищем нужный по payload
-      // Добавляем логирование для отладки
-      console.log('Отправка запроса на получение списка tg-invoices:', {
-        url: `${API_ENDPOINT}/tg-invoices`,
-        apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует'
-      });
+    // Максимальное количество попыток
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    // Функция для выполнения запроса с повторными попытками
+    const executeWithRetry = async (): Promise<{ status: string, success: boolean }> => {
+      try {
+        // В реальности запрос должен отправляться через ваш сервер для безопасности
+        // Получаем список счетов и ищем нужный по payload
+        console.log(`Отправка запроса на получение списка tg-invoices (попытка ${retryCount + 1}/${maxRetries}):`, {
+          url: `${API_ENDPOINT}/tg-invoices`,
+          apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
+          orderId: orderId
+        });
 
-      const response = await axios.get(`${API_ENDPOINT}/tg-invoices`, {
-        headers: {
-          'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY
-        },
-      });
+        const response = await axios.get(`${API_ENDPOINT}/tg-invoices`, {
+          headers: {
+            'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          timeout: 10000 // Устанавливаем таймаут в 10 секунд
+        });
 
-      if (response.data && response.data.success && response.data.data) {
-        // Ищем счет с нужным payload (orderId)
-        const invoice = response.data.data.find((inv: any) => inv.payload === orderId);
-        
-        if (invoice) {
-          // Преобразуем статус в понятный формат
-          let status = 'unknown';
-          if (invoice.status === 'active') {
-            status = 'PENDING';
-          } else if (invoice.totalActivations > 0) {
-            status = 'PAID';
-          } else {
-            status = 'CANCELLED';
-          }
+        if (response.data && response.data.success && response.data.data) {
+          // Ищем счет с нужным payload (orderId)
+          const invoice = response.data.data.find((inv: any) => inv.payload === orderId);
           
-          return {
-            status: status,
-            success: true,
-          };
+          if (invoice) {
+            // Преобразуем статус в понятный формат
+            let status = 'unknown';
+            if (invoice.status === 'active') {
+              status = 'PENDING';
+            } else if (invoice.totalActivations > 0) {
+              status = 'PAID';
+            } else {
+              status = 'CANCELLED';
+            }
+            
+            console.log(`Найден счет для заказа ${orderId}, статус: ${status}`);
+            return {
+              status: status,
+              success: true,
+            };
+          } else {
+            console.log(`Счет для заказа ${orderId} не найден в списке`);
+          }
+        } else {
+          console.error('Ответ API не содержит данных о счетах:', response.data);
+        }
+        
+        return {
+          status: 'unknown',
+          success: false,
+        };
+      } catch (error) {
+        console.error(`Ошибка при проверке статуса платежа (попытка ${retryCount + 1}/${maxRetries}):`, error);
+        
+        // Более подробное логирование для отладки
+        if (axios.isAxiosError(error)) {
+          console.error('Детали ошибки Axios при проверке статуса:', {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            headers: error.response?.headers,
+            config: {
+              url: error.config?.url,
+              method: error.config?.method,
+              headers: error.config?.headers
+            }
+          });
+          
+          // Если ошибка связана с сетью или таймаутом, повторяем запрос
+          if (!error.response || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+            throw error; // Пробрасываем ошибку для повторной попытки
+          }
+        }
+        
+        return {
+          status: 'error',
+          success: false,
+        };
+      }
+    };
+    
+    // Выполняем запрос с повторными попытками
+    while (retryCount < maxRetries) {
+      try {
+        const result = await executeWithRetry();
+        // Если получили успешный результат или конкретный статус, возвращаем его
+        if (result.success || result.status !== 'error') {
+          return result;
+        }
+        
+        // Иначе пробуем еще раз
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          // Экспоненциальная задержка перед повторной попыткой (1с, 2с, 4с, ...)
+          const delay = Math.pow(2, retryCount - 1) * 1000;
+          console.log(`Повторная попытка проверки статуса через ${delay}мс...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      } catch (error) {
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          // Экспоненциальная задержка перед повторной попыткой
+          const delay = Math.pow(2, retryCount - 1) * 1000;
+          console.log(`Повторная попытка проверки статуса через ${delay}мс...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
-      
-      return {
-        status: 'unknown',
-        success: false,
-      };
-    } catch (error) {
-      console.error('Ошибка при проверке статуса платежа:', error);
-      
-      // Более подробное логирование для отладки
-      if (axios.isAxiosError(error)) {
-        console.error('Детали ошибки Axios при проверке статуса:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          headers: error.response?.headers,
-          config: {
-            url: error.config?.url,
-            method: error.config?.method,
-            headers: error.config?.headers
-          }
-        });
-      }
-      
-      return {
-        status: 'error',
-        success: false,
-      };
     }
+    
+    // Если все попытки не удались
+    console.error('Все попытки проверки статуса платежа не удались');
+    return {
+      status: 'error',
+      success: false,
+    };
   },
 
   /**
