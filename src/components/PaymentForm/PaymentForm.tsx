@@ -1,6 +1,5 @@
   import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../../hooks/useTelegram';
 import { rocketPayService } from '../../services/rocketPayService';
 
@@ -85,6 +84,13 @@ const RetryButton = styled.button`
   }
 `;
 
+const ButtonsContainer = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  justify-content: center;
+`;
+
 const LoadingSpinner = styled.div`
   margin: 20px 0;
   border: 4px solid var(--bg-secondary);
@@ -136,8 +142,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onRedirectToPayment,
   onCancel
 }) => {
-  const navigate = useNavigate();
-  const { showMainButton, hideMainButton, getUserData, openLink, isReady } = useTelegram();
+  // Удаляем неиспользуемую переменную navigate
+  const { showMainButton, hideMainButton, getUserData } = useTelegram();
   const [conversion, setConversion] = useState<ConversionState>({
     tonAmount: null,
     tonRate: null,
@@ -241,14 +247,23 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         {paymentError && (
           <ErrorMessage>
             <div>Произошла ошибка: {paymentError}</div>
-            {paymentError.includes('Network Error') || paymentError.includes('CORS') ? (
+            {paymentError.includes('Network Error') || paymentError.includes('сети') || paymentError.includes('соединение') ? (
               <div style={{ marginTop: '8px', fontSize: '0.85rem' }}>
                 Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.
               </div>
+            ) : paymentError.includes('недоступен') ? (
+              <div style={{ marginTop: '8px', fontSize: '0.85rem' }}>
+                Сервер платежной системы временно недоступен. Пожалуйста, попробуйте позже или выберите другой способ оплаты.
+              </div>
             ) : null}
-            <RetryButton onClick={() => window.location.reload()}>
-              Попробовать снова
-            </RetryButton>
+            <ButtonsContainer>
+              <RetryButton onClick={() => window.location.reload()}>
+                Попробовать снова
+              </RetryButton>
+              <RetryButton onClick={onCancel} style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                Вернуться в корзину
+              </RetryButton>
+            </ButtonsContainer>
           </ErrorMessage>
         )}
       </PaymentCard>

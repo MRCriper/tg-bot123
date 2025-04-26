@@ -70,12 +70,28 @@ export function usePayment() {
       // Проверяем соединение с интернетом перед отправкой запроса
       try {
         console.log('usePayment - Проверка соединения с интернетом');
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const connectionCheckResponse = await fetch('https://www.google.com/favicon.ico', { 
           mode: 'no-cors',
           cache: 'no-cache',
           method: 'HEAD'
         });
         console.log('usePayment - Соединение с интернетом доступно');
+        
+        // Дополнительно проверяем доступность сервера Rocket Pay
+        try {
+          console.log('usePayment - Проверка доступности сервера Rocket Pay');
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const rocketPayCheckResponse = await fetch('https://pay.xrocket.tg', { 
+            mode: 'no-cors',
+            cache: 'no-cache',
+            method: 'HEAD'
+          });
+          console.log('usePayment - Сервер Rocket Pay доступен');
+        } catch (rocketPayError) {
+          console.error('usePayment - Ошибка при проверке доступности сервера Rocket Pay:', rocketPayError);
+          throw new Error('Сервер платежной системы недоступен. Пожалуйста, попробуйте позже.');
+        }
       } catch (connectionError) {
         console.error('usePayment - Ошибка при проверке соединения с интернетом:', connectionError);
         throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова.');

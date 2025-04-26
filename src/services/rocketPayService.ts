@@ -167,7 +167,32 @@ export const rocketPayService = {
           console.log('Ответ на ping:', pingResponse.status, pingResponse.statusText);
         } catch (pingError) {
           console.error('Ошибка при проверке доступности API:', pingError);
-          // Продолжаем выполнение, даже если ping не удался
+          
+          // Проверяем, доступен ли сервер вообще
+          try {
+            console.log('Проверка доступности сервера Rocket Pay...');
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const serverCheckResponse = await fetch('https://pay.xrocket.tg', { 
+              mode: 'no-cors',
+              cache: 'no-cache',
+              method: 'HEAD'
+            });
+            console.log('Сервер Rocket Pay доступен, но API не отвечает');
+            
+            // Если сервер доступен, но API не отвечает, возможно проблема с API
+            return {
+              success: false,
+              error: 'Ошибка сети при подключении к платежной системе. Пожалуйста, проверьте ваше соединение и попробуйте снова.'
+            };
+          } catch (serverError) {
+            console.error('Ошибка при проверке доступности сервера:', serverError);
+            
+            // Если сервер недоступен, возвращаем соответствующую ошибку
+            return {
+              success: false,
+              error: 'Сервер платежной системы недоступен. Пожалуйста, попробуйте позже.'
+            };
+          }
         }
 
         // Устанавливаем таймаут для запроса
