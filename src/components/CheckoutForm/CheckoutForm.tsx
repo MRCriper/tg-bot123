@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { useTelegram } from '../../hooks/useTelegram';
 import { Cart, UserData } from '../../types';
@@ -76,21 +75,6 @@ const TotalRow = styled(SummaryRow)`
   padding-top: 16px;
 `;
 
-const SubmitButton = styled.button`
-  width: 100%;
-  padding: 14px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background-color: var(--accent);
-  color: white;
-  border-radius: 10px;
-  margin-top: 16px;
-  
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
 
 // Пропсы для компонента CheckoutForm
 interface CheckoutFormProps {
@@ -105,14 +89,13 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   onSubmit, 
   isLoading = false 
 }) => {
-  const navigate = useNavigate();
   const { getUserData, showMainButton, hideMainButton } = useTelegram();
   
   // Инициализация react-hook-form
   const { 
     register, 
     handleSubmit, 
-    formState: { errors, isValid, dirtyFields },
+    formState: { errors, isValid },
     setValue
   } = useForm<UserData>({
     mode: 'onChange',
@@ -121,8 +104,6 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
     }
   });
 
-  // Состояние для отслеживания, используется ли Telegram WebApp
-  const [isTelegramWebApp, setIsTelegramWebApp] = React.useState<boolean>(true);
 
   // Флаг для отслеживания, был ли уже установлен username
   const usernameSetRef = React.useRef<boolean>(false);
@@ -131,7 +112,6 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   React.useEffect(() => {
     try {
       // Всегда считаем, что мы в Telegram WebApp, чтобы избежать двойных кнопок
-      setIsTelegramWebApp(true);
       console.log('CheckoutForm - Forcing isTelegramWebApp to true');
       
       // Устанавливаем данные пользователя только при первом рендере
@@ -158,9 +138,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
   }, [getUserData, setValue]);
 
   // Обработчик отправки формы
-  const onFormSubmit: SubmitHandler<UserData> = (data) => {
+  const onFormSubmit: SubmitHandler<UserData> = useCallback((data) => {
     onSubmit(data);
-  };
+  }, [onSubmit]);
 
   // Настраиваем кнопку Telegram
   React.useEffect(() => {

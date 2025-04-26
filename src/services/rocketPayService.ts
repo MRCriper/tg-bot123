@@ -96,7 +96,7 @@ export const rocketPayService = {
         });
 
         // Проверяем, что API_ENDPOINT и ROCKET_PAY_SECRET_KEY установлены
-        if (!API_ENDPOINT || API_ENDPOINT === 'https://pay.xrocket.tg/api' && !ROCKET_PAY_SECRET_KEY) {
+        if (!API_ENDPOINT || (API_ENDPOINT === 'https://pay.xrocket.tg/api' && !ROCKET_PAY_SECRET_KEY)) {
           console.error('Отсутствует API_ENDPOINT или ROCKET_PAY_SECRET_KEY');
           return {
             success: false,
@@ -219,7 +219,7 @@ export const rocketPayService = {
         const result = await executeWithRetry();
         
         // Если получили успешный результат или конкретную ошибку, возвращаем его
-        if (result.success || result.error && result.error !== 'Неизвестная ошибка при создании платежа') {
+        if (result.success || (result.error && result.error !== 'Неизвестная ошибка при создании платежа')) {
           return result;
         }
         
