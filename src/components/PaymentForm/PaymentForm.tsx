@@ -56,21 +56,6 @@ const PaymentAmount = styled.div`
   margin: 20px 0;
 `;
 
-const PaymentButton = styled.button`
-  width: 100%;
-  padding: 14px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background-color: var(--accent);
-  color: white;
-  border-radius: 10px;
-  margin-top: 16px;
-  
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
 
 const ErrorMessage = styled.div`
   color: var(--error);
@@ -133,8 +118,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onCancel
 }) => {
   const navigate = useNavigate();
-  const { showMainButton, hideMainButton, getUserData } = useTelegram();
-  const [isTelegramWebApp, setIsTelegramWebApp] = useState<boolean>(false);
+  const { showMainButton, hideMainButton, getUserData, openLink, isReady } = useTelegram();
   const [conversion, setConversion] = useState<ConversionState>({
     tonAmount: null,
     tonRate: null,
@@ -169,10 +153,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   // Проверяем, запущено ли приложение в Telegram WebApp
   useEffect(() => {
     try {
-      const telegramUser = getUserData();
-      // Всегда считаем, что мы в Telegram WebApp, чтобы избежать двойных кнопок
-      setIsTelegramWebApp(true);
-      console.log('PaymentForm - Forcing isTelegramWebApp to true');
+      // Вызываем getUserData() для проверки доступности Telegram API
+      getUserData();
+      console.log('PaymentForm - Telegram API доступен');
     } catch (error) {
       console.error('Ошибка при получении данных пользователя из Telegram:', error);
     }
@@ -202,21 +185,34 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             console.log('PaymentForm - Добавление https:// к URL, итоговый URL:', finalUrl);
           }
           
-          // Используем window.open вместо window.location.href для более надежного перенаправления
-          const newWindow = window.open(finalUrl, '_self');
-          
-          // Если window.open не сработал, пробуем альтернативный метод
-          if (!newWindow) {
-            console.log('PaymentForm - window.open не сработал, пробуем location.href');
-            window.location.href = finalUrl;
+          // Проверяем, доступен ли Telegram WebApp API
+          if (isReady) {
+            console.log('PaymentForm - Используем Telegram WebApp.openLink для перенаправления');
+            // Используем метод Telegram WebApp для открытия внешних ссылок
+            const success = openLink(finalUrl);
+            if (!success) {
+              console.log('PaymentForm - Не удалось открыть ссылку через Telegram WebApp, используем стандартные методы браузера');
+              // Если не удалось открыть ссылку через Telegram WebApp, используем стандартные методы браузера
+              window.location.href = finalUrl;
+            }
+          } else {
+            console.log('PaymentForm - Telegram WebApp недоступен, используем стандартные методы браузера');
+            // Используем window.open вместо window.location.href для более надежного перенаправления
+            const newWindow = window.open(finalUrl, '_self');
             
-            // Дополнительная проверка через таймаут
-            setTimeout(() => {
-              if (document.location.href !== finalUrl) {
-                console.log('PaymentForm - Перенаправление через location.href не сработало, пробуем location.replace');
-                window.location.replace(finalUrl);
-              }
-            }, 1000);
+            // Если window.open не сработал, пробуем альтернативный метод
+            if (!newWindow) {
+              console.log('PaymentForm - window.open не сработал, пробуем location.href');
+              window.location.href = finalUrl;
+              
+              // Дополнительная проверка через таймаут
+              setTimeout(() => {
+                if (document.location.href !== finalUrl) {
+                  console.log('PaymentForm - Перенаправление через location.href не сработало, пробуем location.replace');
+                  window.location.replace(finalUrl);
+                }
+              }, 1000);
+            }
           }
         } catch (error) {
           console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
@@ -230,7 +226,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       // Очистка таймера при размонтировании компонента
       return () => clearTimeout(redirectTimer);
     }
-  }, [paymentUrl, navigate, orderId]);
+  }, [paymentUrl, navigate, orderId, openLink, isReady]);
 
   // Настраиваем кнопку Telegram
   useEffect(() => {

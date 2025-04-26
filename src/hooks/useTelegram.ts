@@ -187,6 +187,23 @@ export function useTelegram() {
     }
   }, [webApp, isReady]);
 
+  // Функция для открытия внешних ссылок
+  const openLink = useCallback((url: string) => {
+    try {
+      if (webApp && isReady) {
+        console.log('Открытие внешней ссылки через Telegram WebApp:', url);
+        webApp.openLink(url);
+        return true;
+      } else {
+        console.log('Telegram WebApp недоступен, не удалось открыть ссылку');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error opening link:', err);
+      return false;
+    }
+  }, [webApp, isReady]);
+
   return {
     close,
     showMainButton,
@@ -198,6 +215,7 @@ export function useTelegram() {
     isBackButtonSupported,
     setThemeParams,
     getUserData,
+    openLink,
     colorScheme: webApp?.colorScheme || 'light',
     themeParams: webApp?.themeParams || {},
     viewportHeight: webApp?.viewportHeight || window.innerHeight,
