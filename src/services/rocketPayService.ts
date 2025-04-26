@@ -133,10 +133,7 @@ export const rocketPayService = {
         
         console.log('Нормализованный URL для перенаправления:', redirectUrl);
         
-        // Создаем URL для неудачной оплаты
-        const failureUrl = `${window.location.origin}/cart`;
-        
-        // Подготавливаем данные для запроса
+        // Подготавливаем данные для запроса в соответствии с документацией API
         const requestData = {
           amount: amountTon, // Сумма в TON после конвертации
           minPayment: amountTon, // Минимальная сумма платежа (обычно равна amount)
@@ -147,13 +144,7 @@ export const rocketPayService = {
           commentsEnabled: false, // Отключаем комментарии
           callbackUrl: redirectUrl, // URL для перенаправления после оплаты
           payload: paymentData.orderId, // Дополнительные данные (используем orderId)
-          expiredIn: 30, // Время жизни счета в минутах (увеличено до 30 минут)
-          // Добавляем параметр для Telegram username
-          telegramUsername: telegramUsername,
-          // Добавляем параметры для улучшения обработки перенаправления
-          returnUrl: redirectUrl, // Дублируем URL для перенаправления в другом параметре
-          successUrl: redirectUrl, // URL для перенаправления при успешной оплате
-          failureUrl: failureUrl, // URL для перенаправления при неудачной оплате
+          expiredIn: 30 // Время жизни счета в минутах (увеличено до 30 минут)
         };
         
         console.log('Подготовленные данные для запроса:', requestData);

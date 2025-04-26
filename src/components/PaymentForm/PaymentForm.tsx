@@ -260,9 +260,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               <RetryButton onClick={() => window.location.reload()}>
                 Попробовать снова
               </RetryButton>
-              <RetryButton onClick={onCancel} style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-                Вернуться в корзину
-              </RetryButton>
             </ButtonsContainer>
           </ErrorMessage>
         )}
