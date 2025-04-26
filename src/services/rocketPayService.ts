@@ -95,6 +95,27 @@ export const rocketPayService = {
           }
         });
 
+        // Проверяем, что API_ENDPOINT и ROCKET_PAY_SECRET_KEY установлены
+        if (!API_ENDPOINT || API_ENDPOINT === 'https://pay.xrocket.tg/api' && !ROCKET_PAY_SECRET_KEY) {
+          console.error('Отсутствует API_ENDPOINT или ROCKET_PAY_SECRET_KEY');
+          return {
+            success: false,
+            error: 'Ошибка конфигурации: Отсутствует API_ENDPOINT или ROCKET_PAY_SECRET_KEY',
+          };
+        }
+
+        // Проверяем, что customerTelegram не пустой
+        if (!paymentData.customerTelegram) {
+          console.error('Отсутствует customerTelegram в данных платежа');
+          return {
+            success: false,
+            error: 'Ошибка данных: Отсутствует имя пользователя Telegram',
+          };
+        }
+
+        // Нормализуем имя пользователя Telegram (убираем @ если он есть)
+        const telegramUsername = paymentData.customerTelegram.replace('@', '');
+
         // Устанавливаем таймаут для запроса
         const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, {
           amount: amountTon, // Сумма в TON после конвертации
@@ -102,11 +123,13 @@ export const rocketPayService = {
           numPayments: 1, // Количество платежей (по умолчанию 1)
           currency: "TONCOIN", // Валюта (TON)
           description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
-          hiddenMessage: `Заказ №${paymentData.orderId} | ${paymentData.customerTelegram}`, // Скрытое сообщение с данными пользователя
+          hiddenMessage: `Заказ №${paymentData.orderId} | ${telegramUsername}`, // Скрытое сообщение с данными пользователя
           commentsEnabled: false, // Отключаем комментарии
           callbackUrl: paymentData.redirectUrl, // URL для перенаправления после оплаты
           payload: paymentData.orderId, // Дополнительные данные (используем orderId)
-          expiredIn: 30 // Время жизни счета в минутах (увеличено до 30 минут)
+          expiredIn: 30, // Время жизни счета в минутах (увеличено до 30 минут)
+          // Добавляем параметр для Telegram username
+          telegramUsername: telegramUsername
         }, {
           headers: {
             'Content-Type': 'application/json',
@@ -114,12 +137,29 @@ export const rocketPayService = {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache'
           },
-          timeout: 10000 // Устанавливаем таймаут в 10 секунд
+          timeout: 15000 // Увеличиваем таймаут до 15 секунд
+        });
+
+        // Подробное логирование ответа
+        console.log('Ответ API:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data
         });
 
         // Проверяем ответ
         if (response.data && response.data.success && response.data.data && response.data.data.link) {
           console.log('Успешно получен URL для оплаты:', response.data.data.link);
+          
+          // Проверяем, что URL не пустой
+          if (!response.data.data.link || response.data.data.link.trim() === '') {
+            console.error('Получен пустой URL для оплаты');
+            return {
+              success: false,
+              error: 'Ошибка при создании платежа: Получен пустой URL для оплаты',
+            };
+          }
+          
           return {
             success: true,
             paymentUrl: response.data.data.link,
@@ -128,7 +168,7 @@ export const rocketPayService = {
           console.error('Ответ API не содержит URL для оплаты:', response.data);
           return {
             success: false,
-            error: 'Ошибка при создании платежа: Не получен URL для оплаты',
+            error: response.data?.message || 'Ошибка при создании платежа: Не получен URL для оплаты',
           };
         }
       } catch (error) {
@@ -155,6 +195,14 @@ export const rocketPayService = {
           if (!error.response || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
             throw error; // Пробрасываем ошибку для повторной попытки
           }
+          
+          // Если ошибка 401 (Unauthorized), значит проблема с ключом API
+          if (error.response?.status === 401) {
+            return {
+              success: false,
+              error: 'Ошибка авторизации: Неверный ключ API',
+            };
+          }
         }
         
         // Возвращаем ошибку
@@ -168,7 +216,22 @@ export const rocketPayService = {
     // Выполняем запрос с повторными попытками
     while (retryCount < maxRetries) {
       try {
-        return await executeWithRetry();
+        const result = await executeWithRetry();
+        
+        // Если получили успешный результат или конкретную ошибку, возвращаем его
+        if (result.success || result.error && result.error !== 'Неизвестная ошибка при создании платежа') {
+          return result;
+        }
+        
+        // Иначе пробуем еще раз
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          // Экспоненциальная задержка перед повторной попыткой (1с, 2с, 4с, ...)
+          const delay = Math.pow(2, retryCount - 1) * 1000;
+          console.log(`Повторная попытка через ${delay}мс...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       } catch (error) {
         retryCount++;
         

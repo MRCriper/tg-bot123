@@ -24,6 +24,11 @@ export function usePayment() {
     setPaymentError(null);
     
     try {
+      // Проверяем, что имя пользователя Telegram не пустое
+      if (!userData.telegramUsername || userData.telegramUsername.trim() === '') {
+        throw new Error('Имя пользователя Telegram не указано');
+      }
+      
       // Генерируем ID заказа
       const newOrderId = generateOrderId();
       setOrderId(newOrderId);
@@ -31,6 +36,13 @@ export function usePayment() {
 
       // Формируем данные для платежа
       const telegramUsername = userData.telegramUsername.replace('@', ''); // Убираем @ если он есть
+      
+      // Проверяем, что имя пользователя соответствует требованиям Telegram (5-32 символа, только буквы, цифры и _)
+      if (!/^[a-zA-Z0-9_]{5,32}$/.test(telegramUsername)) {
+        throw new Error('Некорректное имя пользователя Telegram. Должно содержать от 5 до 32 символов, только буквы, цифры и _');
+      }
+      
+      // Формируем URL для перенаправления после оплаты
       const redirectUrl = `${window.location.origin}/payment/success?orderId=${newOrderId}`;
       
       const paymentData: RocketPaymentData = {
@@ -56,14 +68,24 @@ export function usePayment() {
 
       if (result.success && result.paymentUrl) {
         console.log('usePayment - Платеж успешно создан, URL:', result.paymentUrl);
+        
+        // Проверяем, что URL не пустой
+        if (!result.paymentUrl || result.paymentUrl.trim() === '') {
+          throw new Error('Получен пустой URL для оплаты');
+        }
+        
         setPaymentUrl(result.paymentUrl);
       } else {
         console.error('usePayment - Ошибка при создании платежа:', result.error);
         setPaymentError(result.error || 'Неизвестная ошибка при создании платежа');
       }
     } catch (error) {
-      setPaymentError(error instanceof Error ? error.message : 'Неизвестная ошибка');
-      console.error('Ошибка при инициации платежа:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      console.error('Ошибка при инициации платежа:', errorMessage);
+      setPaymentError(errorMessage);
+      
+      // Сбрасываем orderId в случае ошибки
+      setOrderId(null);
     } finally {
       setIsLoading(false);
     }

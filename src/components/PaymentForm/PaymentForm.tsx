@@ -166,65 +166,53 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     if (paymentUrl) {
       console.log('PaymentForm - Получен URL для оплаты:', paymentUrl);
       
-      // Увеличиваем задержку перед перенаправлением для стабильности
-      const redirectTimer = setTimeout(() => {
-        try {
-          // Проверяем и нормализуем URL
-          let finalUrl = paymentUrl;
-          
-          // Проверяем, что URL начинается с https:// или http://
-          if (paymentUrl.startsWith('https://') || paymentUrl.startsWith('http://')) {
-            // URL уже в правильном формате
-            console.log('PaymentForm - URL в правильном формате, перенаправление на:', finalUrl);
-          } else if (paymentUrl.startsWith('tg://')) {
-            // Обработка специальных Telegram URL
-            console.log('PaymentForm - Обнаружен Telegram URL:', finalUrl);
-          } else {
-            // Если URL не начинается с https:// или http://, добавляем https://
-            finalUrl = `https://${paymentUrl}`;
-            console.log('PaymentForm - Добавление https:// к URL, итоговый URL:', finalUrl);
-          }
-          
-          // Проверяем, доступен ли Telegram WebApp API
-          if (isReady) {
-            console.log('PaymentForm - Используем Telegram WebApp.openLink для перенаправления');
-            // Используем метод Telegram WebApp для открытия внешних ссылок
-            const success = openLink(finalUrl);
-            if (!success) {
-              console.log('PaymentForm - Не удалось открыть ссылку через Telegram WebApp, используем стандартные методы браузера');
-              // Если не удалось открыть ссылку через Telegram WebApp, используем стандартные методы браузера
-              window.location.href = finalUrl;
-            }
-          } else {
-            console.log('PaymentForm - Telegram WebApp недоступен, используем стандартные методы браузера');
-            // Используем window.open вместо window.location.href для более надежного перенаправления
-            const newWindow = window.open(finalUrl, '_self');
-            
-            // Если window.open не сработал, пробуем альтернативный метод
-            if (!newWindow) {
-              console.log('PaymentForm - window.open не сработал, пробуем location.href');
-              window.location.href = finalUrl;
-              
-              // Дополнительная проверка через таймаут
-              setTimeout(() => {
-                if (document.location.href !== finalUrl) {
-                  console.log('PaymentForm - Перенаправление через location.href не сработало, пробуем location.replace');
-                  window.location.replace(finalUrl);
-                }
-              }, 1000);
-            }
-          }
-        } catch (error) {
-          console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
-          
-          // В случае ошибки перенаправляем на страницу статуса заказа
-          console.log('PaymentForm - Перенаправление на страницу статуса заказа:', `/payment/success?orderId=${orderId}`);
-          navigate(`/payment/success?orderId=${orderId}`);
+      // Убираем задержку перед перенаправлением, чтобы избежать проблем с быстрым переходом
+      try {
+        // Проверяем и нормализуем URL
+        let finalUrl = paymentUrl;
+        
+        // Проверяем, что URL начинается с https:// или http://
+        if (paymentUrl.startsWith('https://') || paymentUrl.startsWith('http://')) {
+          // URL уже в правильном формате
+          console.log('PaymentForm - URL в правильном формате, перенаправление на:', finalUrl);
+        } else if (paymentUrl.startsWith('tg://')) {
+          // Обработка специальных Telegram URL
+          console.log('PaymentForm - Обнаружен Telegram URL:', finalUrl);
+        } else {
+          // Если URL не начинается с https:// или http://, добавляем https://
+          finalUrl = `https://${paymentUrl}`;
+          console.log('PaymentForm - Добавление https:// к URL, итоговый URL:', finalUrl);
         }
-      }, 1000); // Увеличиваем задержку до 1000 мс для большей стабильности
-      
-      // Очистка таймера при размонтировании компонента
-      return () => clearTimeout(redirectTimer);
+        
+        // Проверяем, доступен ли Telegram WebApp API
+        if (isReady) {
+          console.log('PaymentForm - Используем Telegram WebApp.openLink для перенаправления');
+          
+          // Добавляем дополнительную проверку URL перед открытием
+          if (!finalUrl || finalUrl.trim() === '') {
+            throw new Error('Пустой URL для перенаправления');
+          }
+          
+          // Используем метод Telegram WebApp для открытия внешних ссылок
+          const success = openLink(finalUrl);
+          console.log('PaymentForm - Результат openLink:', success);
+          
+          if (!success) {
+            console.log('PaymentForm - Не удалось открыть ссылку через Telegram WebApp, используем window.location.href');
+            // Если не удалось открыть ссылку через Telegram WebApp, используем window.location.href
+            window.location.href = finalUrl;
+          }
+        } else {
+          console.log('PaymentForm - Telegram WebApp недоступен, используем window.location.href');
+          // Используем напрямую window.location.href для более надежного перенаправления
+          window.location.href = finalUrl;
+        }
+      } catch (error) {
+        console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
+        
+        // Показываем ошибку пользователю вместо автоматического перенаправления
+        alert(`Ошибка при перенаправлении на страницу оплаты: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      }
     }
   }, [paymentUrl, navigate, orderId, openLink, isReady]);
 

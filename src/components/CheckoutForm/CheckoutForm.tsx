@@ -210,7 +210,16 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({
               required: 'Telegram username обязателен для заполнения',
               pattern: {
                 value: /^@?[a-zA-Z0-9_]{5,32}$/,
-                message: 'Введите корректный Telegram username (5-32 символа)'
+                message: 'Введите корректный Telegram username (5-32 символа, только буквы, цифры и _)'
+              },
+              validate: {
+                validUsername: (value) => {
+                  // Убираем @ если он есть
+                  const username = value.replace('@', '');
+                  // Проверяем, что имя пользователя соответствует требованиям Telegram
+                  return /^[a-zA-Z0-9_]{5,32}$/.test(username) || 
+                    'Некорректный Telegram username. Должен содержать от 5 до 32 символов, только буквы, цифры и _';
+                }
               }
             })}
           />
