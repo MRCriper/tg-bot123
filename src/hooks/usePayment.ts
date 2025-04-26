@@ -67,34 +67,63 @@ export function usePayment() {
         redirectUrl: redirectUrl
       });
 
-      // Проверяем соединение с интернетом перед отправкой запроса
+      // Улучшенная проверка соединения с интернетом перед отправкой запроса
       try {
         console.log('usePayment - Проверка соединения с интернетом');
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const connectionCheckResponse = await fetch('https://www.google.com/favicon.ico', { 
-          mode: 'no-cors',
-          cache: 'no-cache',
-          method: 'HEAD'
-        });
-        console.log('usePayment - Соединение с интернетом доступно');
         
-        // Дополнительно проверяем доступность сервера Rocket Pay
-        try {
-          console.log('usePayment - Проверка доступности сервера Rocket Pay');
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const rocketPayCheckResponse = await fetch('https://pay.xrocket.tg', { 
-            mode: 'no-cors',
-            cache: 'no-cache',
-            method: 'HEAD'
-          });
-          console.log('usePayment - Сервер Rocket Pay доступен');
-        } catch (rocketPayError) {
-          console.error('usePayment - Ошибка при проверке доступности сервера Rocket Pay:', rocketPayError);
-          throw new Error('Сервер платежной системы недоступен. Пожалуйста, попробуйте позже.');
+        // Используем несколько надежных ресурсов для проверки соединения
+        const checkUrls = [
+          'https://pay.xrocket.tg', // Сначала проверяем сам сервер Rocket Pay
+          'https://www.cloudflare.com/favicon.ico', // Cloudflare обычно доступен глобально
+          'https://www.apple.com/favicon.ico', // Apple обычно доступен глобально
+          'https://www.microsoft.com/favicon.ico', // Microsoft обычно доступен глобально
+          'https://www.google.com/favicon.ico' // Google может быть заблокирован в некоторых странах
+        ];
+        
+        // Функция для проверки одного URL
+        const checkUrl = async (url: string): Promise<boolean> => {
+          try {
+            console.log(`usePayment - Проверка доступности ${url}`);
+            // Используем AbortController для установки таймаута
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
+            
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const response = await fetch(url, { 
+              mode: 'no-cors',
+              cache: 'no-cache',
+              method: 'HEAD',
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            console.log(`usePayment - ${url} доступен`);
+            return true;
+          } catch (error) {
+            console.warn(`usePayment - Ошибка при проверке доступности ${url}:`, error);
+            return false;
+          }
+        };
+        
+        // Проверяем каждый URL последовательно, пока не найдем доступный
+        let isConnected = false;
+        for (const url of checkUrls) {
+          isConnected = await checkUrl(url);
+          if (isConnected) {
+            break;
+          }
         }
+        
+        // Если ни один URL не доступен, считаем, что соединение отсутствует
+        if (!isConnected) {
+          console.error('usePayment - Все проверки соединения не удались');
+          throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова.');
+        }
+        
+        console.log('usePayment - Соединение с интернетом доступно');
       } catch (connectionError) {
         console.error('usePayment - Ошибка при проверке соединения с интернетом:', connectionError);
-        throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова.');
+        throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова. Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.');
       }
 
       // Отправляем запрос в Rocket Pay

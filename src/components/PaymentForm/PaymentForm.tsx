@@ -247,15 +247,41 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         {paymentError && (
           <ErrorMessage>
             <div>Произошла ошибка: {paymentError}</div>
-            {paymentError.includes('Network Error') || paymentError.includes('сети') || paymentError.includes('соединение') ? (
+            
+            {/* Расширенные инструкции в зависимости от типа ошибки */}
+            {paymentError.includes('Network Error') || paymentError.includes('сети') || paymentError.includes('соединение') || paymentError.includes('интернет') ? (
               <div style={{ marginTop: '8px', fontSize: '0.85rem' }}>
-                Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.
+                <p>Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.</p>
+                <p style={{ marginTop: '4px' }}>Рекомендации:</p>
+                <ul style={{ marginTop: '4px', paddingLeft: '20px', textAlign: 'left' }}>
+                  <li>Убедитесь, что у вас стабильное интернет-соединение</li>
+                  <li>Попробуйте переключиться с Wi-Fi на мобильный интернет (или наоборот)</li>
+                  <li>Перезапустите приложение Telegram</li>
+                  <li>Если проблема сохраняется, попробуйте позже</li>
+                </ul>
               </div>
-            ) : paymentError.includes('недоступен') ? (
+            ) : paymentError.includes('недоступен') || paymentError.includes('сервер') ? (
               <div style={{ marginTop: '8px', fontSize: '0.85rem' }}>
-                Сервер платежной системы временно недоступен. Пожалуйста, попробуйте позже или выберите другой способ оплаты.
+                <p>Сервер платежной системы временно недоступен. Пожалуйста, попробуйте позже или выберите другой способ оплаты.</p>
+                <p style={{ marginTop: '4px' }}>Рекомендации:</p>
+                <ul style={{ marginTop: '4px', paddingLeft: '20px', textAlign: 'left' }}>
+                  <li>Подождите несколько минут и попробуйте снова</li>
+                  <li>Проверьте статус платежной системы на официальном сайте</li>
+                  <li>Если проблема сохраняется, свяжитесь с поддержкой</li>
+                </ul>
+              </div>
+            ) : paymentError.includes('таймаут') || paymentError.includes('timeout') || paymentError.includes('время') ? (
+              <div style={{ marginTop: '8px', fontSize: '0.85rem' }}>
+                <p>Превышено время ожидания ответа от платежной системы. Пожалуйста, попробуйте снова.</p>
+                <p style={{ marginTop: '4px' }}>Рекомендации:</p>
+                <ul style={{ marginTop: '4px', paddingLeft: '20px', textAlign: 'left' }}>
+                  <li>Проверьте скорость вашего интернет-соединения</li>
+                  <li>Попробуйте переключиться на более стабильное соединение</li>
+                  <li>Подождите несколько минут и попробуйте снова</li>
+                </ul>
               </div>
             ) : null}
+            
             <ButtonsContainer>
               <RetryButton onClick={() => window.location.reload()}>
                 Попробовать снова
