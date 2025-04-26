@@ -8,10 +8,13 @@ const API_ENDPOINT = ROCKET_PAY_API_URL.endsWith('/api') ? ROCKET_PAY_API_URL : 
 
 // Логируем URL API для отладки
 console.log('Rocket Pay API URL:', API_ENDPOINT);
+console.log('Rocket Pay API URL из .env:', process.env.REACT_APP_ROCKET_PAY_API_URL);
 
 // Секретный ключ (будет предоставлен при регистрации в Rocket Pay)
 // В реальном приложении этот ключ должен храниться на сервере и не должен быть доступен на клиенте
 const ROCKET_PAY_SECRET_KEY = process.env.REACT_APP_ROCKET_PAY_SECRET_KEY || '';
+console.log('Rocket Pay Secret Key установлен:', ROCKET_PAY_SECRET_KEY ? 'Да' : 'Нет');
+console.log('Длина ключа:', ROCKET_PAY_SECRET_KEY.length);
 
 // URL для получения курса TON/RUB
 const TON_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub';
@@ -155,7 +158,28 @@ export const rocketPayService = {
         
         console.log('Подготовленные данные для запроса:', requestData);
         
+        // Проверяем доступность API перед отправкой основного запроса
+        try {
+          console.log('Проверка доступности API Rocket Pay...');
+          const pingResponse = await axios.get(`${API_ENDPOINT}/ping`, {
+            timeout: 5000
+          });
+          console.log('Ответ на ping:', pingResponse.status, pingResponse.statusText);
+        } catch (pingError) {
+          console.error('Ошибка при проверке доступности API:', pingError);
+          // Продолжаем выполнение, даже если ping не удался
+        }
+
         // Устанавливаем таймаут для запроса
+        console.log('Отправка POST запроса на', `${API_ENDPOINT}/tg-invoices`);
+        console.log('Заголовки запроса:', {
+          'Content-Type': 'application/json',
+          'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY ? 'Установлен (скрыт)' : 'Не установлен',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Accept': 'application/json'
+        });
+        
         const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, requestData, {
           headers: {
             'Content-Type': 'application/json',
@@ -164,7 +188,7 @@ export const rocketPayService = {
             'Pragma': 'no-cache',
             'Accept': 'application/json'
           },
-          timeout: 15000 // Увеличиваем таймаут до 15 секунд
+          timeout: 30000 // Увеличиваем таймаут до 30 секунд
         });
 
         // Подробное логирование ответа
@@ -213,23 +237,39 @@ export const rocketPayService = {
               method: error.config?.method,
               headers: error.config?.headers,
               data: error.config?.data
-            }
+            },
+            message: error.message,
+            code: error.code,
+            isAxiosError: error.isAxiosError
           });
           
           lastError = error;
           
           // Если ошибка связана с сетью или таймаутом, повторяем запрос
           if (!error.response || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+            console.log('Обнаружена сетевая ошибка, будет выполнена повторная попытка');
             throw error; // Пробрасываем ошибку для повторной попытки
           }
           
           // Если ошибка 401 (Unauthorized), значит проблема с ключом API
           if (error.response?.status === 401) {
+            console.error('Получена ошибка 401 Unauthorized - проблема с ключом API');
             return {
               success: false,
               error: 'Ошибка авторизации: Неверный ключ API',
             };
           }
+          
+          // Если ошибка связана с CORS
+          if (error.message.includes('Network Error') || error.message.includes('CORS')) {
+            console.error('Обнаружена ошибка CORS или сетевая ошибка');
+            return {
+              success: false,
+              error: 'Сетевая ошибка: Возможно, проблема с CORS или доступом к API',
+            };
+          }
+        } else {
+          console.error('Не-Axios ошибка:', error);
         }
         
         // Возвращаем ошибку

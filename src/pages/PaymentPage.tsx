@@ -68,26 +68,53 @@ const PaymentPage: React.FC = () => {
     if (paymentUrl) {
       console.log('PaymentPage - Кнопка оплаты нажата, URL:', paymentUrl);
       
-      // Проверяем, что URL начинается с https:// или http://
-      let finalUrl = paymentUrl;
-      if (!paymentUrl.startsWith('https://') && !paymentUrl.startsWith('http://')) {
-        finalUrl = `https://${paymentUrl}`;
-        console.log('PaymentPage - Добавлен протокол https://, итоговый URL:', finalUrl);
-      }
-      
-      // Проверяем, что URL содержит домен платежной системы
-      if (finalUrl.includes('pay.xrocket.tg') || 
-          finalUrl.includes('xrocket.tg') || 
-          finalUrl.includes('ton-rocket.com')) {
-        console.log('PaymentPage - Обнаружен URL платежной системы Rocket Pay');
+      try {
+        // Проверяем, что URL начинается с https:// или http://
+        let finalUrl = paymentUrl;
+        if (!paymentUrl.startsWith('https://') && !paymentUrl.startsWith('http://')) {
+          finalUrl = `https://${paymentUrl}`;
+          console.log('PaymentPage - Добавлен протокол https://, итоговый URL:', finalUrl);
+        }
         
-        // Используем метод openLink из хука useTelegram
-        // Это обеспечит корректное открытие ссылки в среде Telegram WebApp
-        openLink(finalUrl);
-      } else {
-        console.warn('PaymentPage - URL не содержит домен платежной системы Rocket Pay:', finalUrl);
-        // Все равно пытаемся открыть URL
-        openLink(finalUrl);
+        // Проверяем, что URL содержит домен платежной системы
+        if (finalUrl.includes('pay.xrocket.tg') || 
+            finalUrl.includes('xrocket.tg') || 
+            finalUrl.includes('ton-rocket.com')) {
+          console.log('PaymentPage - Обнаружен URL платежной системы Rocket Pay');
+          
+          // Используем метод openLink из хука useTelegram
+          // Это обеспечит корректное открытие ссылки в среде Telegram WebApp
+          const success = openLink(finalUrl);
+          console.log('PaymentPage - Результат открытия ссылки:', success ? 'успешно' : 'неудачно');
+          
+          // Если не удалось открыть через Telegram WebApp, пробуем через window.open
+          if (!success) {
+            console.log('PaymentPage - Пробуем открыть через window.open');
+            window.open(finalUrl, '_blank');
+          }
+        } else {
+          console.warn('PaymentPage - URL не содержит домен платежной системы Rocket Pay:', finalUrl);
+          // Все равно пытаемся открыть URL
+          const success = openLink(finalUrl);
+          
+          // Если не удалось открыть через Telegram WebApp, пробуем через window.open
+          if (!success) {
+            console.log('PaymentPage - Пробуем открыть через window.open');
+            window.open(finalUrl, '_blank');
+          }
+        }
+      } catch (error) {
+        console.error('PaymentPage - Ошибка при открытии платежной ссылки:', error);
+        
+        // В случае ошибки пробуем открыть через window.location
+        try {
+          window.location.href = paymentUrl;
+        } catch (locationError) {
+          console.error('PaymentPage - Не удалось открыть ссылку даже через window.location:', locationError);
+          
+          // Если все методы не сработали, показываем пользователю сообщение
+          alert(`Не удалось открыть платежную страницу. Пожалуйста, скопируйте ссылку вручную: ${paymentUrl}`);
+        }
       }
     } else {
       console.log('PaymentPage - Кнопка оплаты нажата, но URL еще не получен');

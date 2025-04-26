@@ -64,6 +64,25 @@ const ErrorMessage = styled.div`
   border-radius: 8px;
   margin-top: 16px;
   font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const RetryButton = styled.button`
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: var(--accent-dark, #0056b3);
+  }
 `;
 
 const LoadingSpinner = styled.div`
@@ -221,7 +240,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         
         {paymentError && (
           <ErrorMessage>
-            Произошла ошибка: {paymentError}
+            <div>Произошла ошибка: {paymentError}</div>
+            {paymentError.includes('Network Error') || paymentError.includes('CORS') ? (
+              <div style={{ marginTop: '8px', fontSize: '0.85rem' }}>
+                Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.
+              </div>
+            ) : null}
+            <RetryButton onClick={() => window.location.reload()}>
+              Попробовать снова
+            </RetryButton>
           </ErrorMessage>
         )}
       </PaymentCard>

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { rocketPayService } from '../services/rocketPayService';
-import { Cart, RocketPaymentData, UserData } from '../types';
+import { Cart, RocketPaymentData, RocketPayResponse, UserData } from '../types';
 
 // Хук для работы с платежной системой
 export function usePayment() {
@@ -67,9 +67,34 @@ export function usePayment() {
         redirectUrl: redirectUrl
       });
 
+      // Проверяем соединение с интернетом перед отправкой запроса
+      try {
+        console.log('usePayment - Проверка соединения с интернетом');
+        const connectionCheckResponse = await fetch('https://www.google.com/favicon.ico', { 
+          mode: 'no-cors',
+          cache: 'no-cache',
+          method: 'HEAD'
+        });
+        console.log('usePayment - Соединение с интернетом доступно');
+      } catch (connectionError) {
+        console.error('usePayment - Ошибка при проверке соединения с интернетом:', connectionError);
+        throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова.');
+      }
+
       // Отправляем запрос в Rocket Pay
       console.log('usePayment - Отправка запроса в Rocket Pay');
-      const result = await rocketPayService.initiatePayment(paymentData);
+      
+      // Устанавливаем таймаут для запроса
+      const timeoutPromise = new Promise<RocketPayResponse>((_, reject) => {
+        setTimeout(() => reject(new Error('Превышено время ожидания ответа от платежной системы')), 30000);
+      });
+      
+      // Выполняем запрос с таймаутом
+      const result = await Promise.race([
+        rocketPayService.initiatePayment(paymentData),
+        timeoutPromise
+      ]);
+      
       console.log('usePayment - Получен ответ от Rocket Pay:', result);
 
       if (result.success && result.paymentUrl) {
@@ -83,12 +108,34 @@ export function usePayment() {
         setPaymentUrl(result.paymentUrl);
       } else {
         console.error('usePayment - Ошибка при создании платежа:', result.error);
-        setPaymentError(result.error || 'Неизвестная ошибка при создании платежа');
+        
+        // Преобразуем общие ошибки в более понятные для пользователя
+        let userFriendlyError = result.error || 'Неизвестная ошибка при создании платежа';
+        
+        if (userFriendlyError.includes('Network Error')) {
+          userFriendlyError = 'Ошибка сети при подключении к платежной системе. Пожалуйста, проверьте ваше соединение и попробуйте снова.';
+        } else if (userFriendlyError.includes('timeout')) {
+          userFriendlyError = 'Превышено время ожидания ответа от платежной системы. Пожалуйста, попробуйте снова позже.';
+        } else if (userFriendlyError.includes('CORS')) {
+          userFriendlyError = 'Ошибка доступа к платежной системе. Пожалуйста, попробуйте снова позже или обратитесь в поддержку.';
+        }
+        
+        setPaymentError(userFriendlyError);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       console.error('Ошибка при инициации платежа:', errorMessage);
-      setPaymentError(errorMessage);
+      
+      // Преобразуем общие ошибки в более понятные для пользователя
+      let userFriendlyError = errorMessage;
+      
+      if (errorMessage.includes('Network Error')) {
+        userFriendlyError = 'Ошибка сети при подключении к платежной системе. Пожалуйста, проверьте ваше соединение и попробуйте снова.';
+      } else if (errorMessage.includes('timeout')) {
+        userFriendlyError = 'Превышено время ожидания ответа от платежной системы. Пожалуйста, попробуйте снова позже.';
+      }
+      
+      setPaymentError(userFriendlyError);
       
       // Сбрасываем orderId в случае ошибки
       setOrderId(null);
