@@ -149,6 +149,16 @@ const getStatusDescription = (status: string) => {
   }
 };
 
+// Интерфейс для состояния заказа
+interface OrderStatusState {
+  status: string;
+  isLoading: boolean;
+  orderDate: string;
+  amountRub: number | null;
+  amountTon: number | null;
+  tonRate: number | null;
+}
+
 // Компонент статуса заказа
 const OrderStatus: React.FC = () => {
   const navigate = useNavigate();
@@ -159,16 +169,24 @@ const OrderStatus: React.FC = () => {
   const orderId = searchParams.get('orderId');
   
   // Состояния
-  const [status, setStatus] = useState<string>('loading');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [orderDate, setOrderDate] = useState<string>('');
+  const [orderState, setOrderState] = useState<OrderStatusState>({
+    status: 'loading',
+    isLoading: true,
+    orderDate: '',
+    amountRub: null,
+    amountTon: null,
+    tonRate: null
+  });
   
   // При монтировании компонента получаем статус заказа
   useEffect(() => {
     const checkStatus = async () => {
       if (!orderId) {
-        setStatus('error');
-        setIsLoading(false);
+        setOrderState(prev => ({
+          ...prev,
+          status: 'error',
+          isLoading: false
+        }));
         return;
       }
       
@@ -176,25 +194,39 @@ const OrderStatus: React.FC = () => {
         // Получаем статус заказа
         const result = await rocketPayService.checkPaymentStatus(orderId);
         
+        // Получаем курс TON/RUB для отображения
+        const tonRate = await rocketPayService.getTonToRubRate();
+        
+        // Устанавливаем примерную сумму в рублях для демонстрации (в реальном приложении это должно быть сохранено в БД)
+        const amountRub = 1000; // Примерная сумма заказа в рублях
+        const amountTon = await rocketPayService.convertRubToTon(amountRub);
+        
+        let newStatus = 'error';
         if (result.success) {
           if (result.status === 'PAID') {
-            setStatus('success');
+            newStatus = 'success';
           } else if (result.status === 'PENDING') {
-            setStatus('pending');
-          } else {
-            setStatus('error');
+            newStatus = 'pending';
           }
-        } else {
-          setStatus('error');
         }
         
-        // Устанавливаем текущую дату для демонстрации
-        setOrderDate(new Date().toLocaleDateString('ru-RU'));
+        // Обновляем состояние заказа
+        setOrderState({
+          status: newStatus,
+          isLoading: false,
+          orderDate: new Date().toLocaleDateString('ru-RU'),
+          amountRub,
+          amountTon,
+          tonRate
+        });
       } catch (error) {
         console.error('Ошибка при проверке статуса заказа:', error);
-        setStatus('error');
-      } finally {
-        setIsLoading(false);
+        setOrderState(prev => ({
+          ...prev,
+          status: 'error',
+          isLoading: false,
+          orderDate: new Date().toLocaleDateString('ru-RU')
+        }));
       }
     };
     
@@ -214,7 +246,7 @@ const OrderStatus: React.FC = () => {
   };
 
   // Пока загружается, показываем спиннер
-  if (isLoading) {
+  if (orderState.isLoading) {
     return (
       <StatusContainer>
         <StatusCard>
@@ -229,12 +261,12 @@ const OrderStatus: React.FC = () => {
   return (
     <StatusContainer>
       <StatusCard>
-        <StatusIcon status={status}>
-          {getStatusIcon(status)}
+        <StatusIcon status={orderState.status}>
+          {getStatusIcon(orderState.status)}
         </StatusIcon>
         
-        <StatusTitle>{getStatusTitle(status)}</StatusTitle>
-        <StatusDescription>{getStatusDescription(status)}</StatusDescription>
+        <StatusTitle>{getStatusTitle(orderState.status)}</StatusTitle>
+        <StatusDescription>{getStatusDescription(orderState.status)}</StatusDescription>
         
         {/* Информация о заказе */}
         {orderId && (
@@ -243,20 +275,41 @@ const OrderStatus: React.FC = () => {
               <InfoLabel>Номер заказа:</InfoLabel>
               <InfoValue>{orderId}</InfoValue>
             </InfoRow>
-            {orderDate && (
+            {orderState.orderDate && (
               <InfoRow>
                 <InfoLabel>Дата заказа:</InfoLabel>
-                <InfoValue>{orderDate}</InfoValue>
+                <InfoValue>{orderState.orderDate}</InfoValue>
               </InfoRow>
             )}
             <InfoRow>
               <InfoLabel>Статус:</InfoLabel>
               <InfoValue>
-                {status === 'success' ? 'Оплачен' : 
-                 status === 'pending' ? 'В обработке' : 
+                {orderState.status === 'success' ? 'Оплачен' : 
+                 orderState.status === 'pending' ? 'В обработке' : 
                  'Ошибка'}
               </InfoValue>
             </InfoRow>
+            
+            {/* Информация о сумме и конвертации */}
+            {orderState.amountRub && (
+              <InfoRow>
+                <InfoLabel>Сумма:</InfoLabel>
+                <InfoValue>{orderState.amountRub.toLocaleString('ru-RU')} ₽</InfoValue>
+              </InfoRow>
+            )}
+            
+            {orderState.amountTon && orderState.tonRate && (
+              <>
+                <InfoRow>
+                  <InfoLabel>Сумма в TON:</InfoLabel>
+                  <InfoValue>{orderState.amountTon.toFixed(9)} TON</InfoValue>
+                </InfoRow>
+                <InfoRow>
+                  <InfoLabel>Курс:</InfoLabel>
+                  <InfoValue>1 TON = {orderState.tonRate.toFixed(2)} ₽</InfoValue>
+                </InfoRow>
+              </>
+            )}
           </OrderInfo>
         )}
         
@@ -266,7 +319,7 @@ const OrderStatus: React.FC = () => {
         </ActionButton>
         
         {/* Кнопка повторной оплаты при ошибке */}
-        {status === 'error' && (
+        {orderState.status === 'error' && (
           <ActionButton 
             onClick={() => navigate('/checkout')}
             style={{ backgroundColor: 'var(--error)', marginLeft: '8px' }}

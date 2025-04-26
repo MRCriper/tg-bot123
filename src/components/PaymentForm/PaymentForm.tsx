@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../../hooks/useTelegram';
+import { rocketPayService } from '../../services/rocketPayService';
 
 // Стилизованные компоненты
 const PaymentContainer = styled.div`
@@ -12,6 +13,17 @@ const PaymentContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+`;
+
+const ConversionInfo = styled.div`
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  width: 100%;
+  text-align: center;
 `;
 
 const PaymentCard = styled.div`
@@ -103,6 +115,13 @@ interface PaymentFormProps {
   onCancel: () => void;
 }
 
+// Интерфейс для состояния конвертации
+interface ConversionState {
+  tonAmount: number | null;
+  tonRate: number | null;
+  isLoading: boolean;
+}
+
 // Компонент формы платежа
 const PaymentForm: React.FC<PaymentFormProps> = ({
   orderId,
@@ -116,6 +135,36 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const navigate = useNavigate();
   const { showMainButton, hideMainButton, getUserData } = useTelegram();
   const [isTelegramWebApp, setIsTelegramWebApp] = useState<boolean>(false);
+  const [conversion, setConversion] = useState<ConversionState>({
+    tonAmount: null,
+    tonRate: null,
+    isLoading: true
+  });
+
+  // Получаем информацию о конвертации при загрузке компонента
+  useEffect(() => {
+    const fetchConversionInfo = async () => {
+      try {
+        const tonRate = await rocketPayService.getTonToRubRate();
+        const tonAmount = await rocketPayService.convertRubToTon(amount);
+        
+        setConversion({
+          tonAmount,
+          tonRate,
+          isLoading: false
+        });
+      } catch (error) {
+        console.error('Ошибка при получении информации о конвертации:', error);
+        setConversion({
+          tonAmount: null,
+          tonRate: null,
+          isLoading: false
+        });
+      }
+    };
+
+    fetchConversionInfo();
+  }, [amount]);
 
   // Проверяем, запущено ли приложение в Telegram WebApp
   useEffect(() => {
@@ -196,6 +245,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         <PaymentAmount>
           {formatAmount(amount)}
         </PaymentAmount>
+        
+        {!conversion.isLoading && conversion.tonAmount && conversion.tonRate && (
+          <ConversionInfo>
+            ≈ {conversion.tonAmount.toFixed(9)} TON
+            <br />
+            <small>Курс: 1 TON = {conversion.tonRate.toFixed(2)} ₽</small>
+          </ConversionInfo>
+        )}
         
         {isLoading ? (
           <>

@@ -13,8 +13,58 @@ console.log('Rocket Pay API URL:', API_ENDPOINT);
 // В реальном приложении этот ключ должен храниться на сервере и не должен быть доступен на клиенте
 const ROCKET_PAY_SECRET_KEY = process.env.REACT_APP_ROCKET_PAY_SECRET_KEY || '';
 
+// URL для получения курса TON/RUB
+const TON_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub';
+
 // Сервис для взаимодействия с платежной системой Rocket Pay
 export const rocketPayService = {
+  /**
+   * Получает актуальный курс TON/RUB
+   * @returns - курс TON/RUB (сколько рублей стоит 1 TON)
+   */
+  async getTonToRubRate(): Promise<number> {
+    try {
+      console.log('Запрос курса TON/RUB');
+      const response = await axios.get(TON_PRICE_API_URL);
+      
+      if (response.data && response.data['the-open-network'] && response.data['the-open-network'].rub) {
+        const rate = response.data['the-open-network'].rub;
+        console.log(`Получен курс TON/RUB: 1 TON = ${rate} RUB`);
+        return rate;
+      } else {
+        console.error('Не удалось получить курс TON/RUB из API');
+        // Возвращаем примерный курс на случай, если API недоступно
+        return 350; // Примерный курс TON/RUB
+      }
+    } catch (error) {
+      console.error('Ошибка при получении курса TON/RUB:', error);
+      // Возвращаем примерный курс на случай, если API недоступно
+      return 350; // Примерный курс TON/RUB
+    }
+  },
+  
+  /**
+   * Конвертирует сумму из рублей в TON
+   * @param amountRub - сумма в рублях
+   * @returns - сумма в TON
+   */
+  async convertRubToTon(amountRub: number): Promise<number> {
+    try {
+      const tonRate = await this.getTonToRubRate();
+      const amountTon = amountRub / tonRate;
+      
+      // Округляем до 9 знаков после запятой (максимальная точность для TON)
+      const roundedAmount = parseFloat(amountTon.toFixed(9));
+      
+      console.log(`Конвертация: ${amountRub} RUB = ${roundedAmount} TON (курс: ${tonRate} RUB за 1 TON)`);
+      return roundedAmount;
+    } catch (error) {
+      console.error('Ошибка при конвертации RUB в TON:', error);
+      // В случае ошибки делаем примерную конвертацию
+      const approximateRate = 350; // Примерный курс TON/RUB
+      return parseFloat((amountRub / approximateRate).toFixed(9));
+    }
+  },
   /**
    * Инициирует платеж в Rocket Pay
    * @param paymentData - данные для создания платежа
@@ -22,6 +72,9 @@ export const rocketPayService = {
    */
   async initiatePayment(paymentData: RocketPaymentData): Promise<RocketPayResponse> {
     try {
+      // Конвертируем сумму из рублей в TON
+      const amountTon = await this.convertRubToTon(paymentData.amount);
+      
       // В реальности запрос должен отправляться через ваш сервер для безопасности
       // Это демо-реализация для наглядности
       // Добавляем подробное логирование запроса
@@ -29,24 +82,25 @@ export const rocketPayService = {
         url: `${API_ENDPOINT}/tg-invoices`,
         apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
         data: {
-          amount: paymentData.amount,
+          amount: amountTon,
           description: paymentData.description,
           callbackUrl: paymentData.redirectUrl,
-          payload: paymentData.orderId
+          payload: paymentData.orderId,
+          originalAmountRub: paymentData.amount // Оригинальная сумма в рублях для логирования
         }
       });
 
       const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, {
-        amount: paymentData.amount,
-        minPayment: paymentData.amount, // Минимальная сумма платежа (обычно равна amount)
+        amount: amountTon, // Сумма в TON после конвертации
+        minPayment: amountTon, // Минимальная сумма платежа (обычно равна amount)
         numPayments: 1, // Количество платежей (по умолчанию 1)
         currency: "TONCOIN", // Валюта (TON)
-        description: paymentData.description,
-        hiddenMessage: `Заказ №${paymentData.orderId}`, // Скрытое сообщение, видимое только продавцу
+        description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
+        hiddenMessage: `Заказ №${paymentData.orderId} | ${paymentData.customerTelegram}`, // Скрытое сообщение с данными пользователя
         commentsEnabled: false, // Отключаем комментарии
         callbackUrl: paymentData.redirectUrl, // URL для перенаправления после оплаты
         payload: paymentData.orderId, // Дополнительные данные (используем orderId)
-        expiredIn: 10 // Время жизни счета в минутах
+        expiredIn: 30 // Время жизни счета в минутах (увеличено до 30 минут)
       }, {
         headers: {
           'Content-Type': 'application/json',
