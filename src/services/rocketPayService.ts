@@ -116,8 +116,25 @@ export const rocketPayService = {
         // Нормализуем имя пользователя Telegram (убираем @ если он есть)
         const telegramUsername = paymentData.customerTelegram.replace('@', '');
 
-        // Устанавливаем таймаут для запроса
-        const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, {
+        // Нормализуем URL для перенаправления
+        // Убедимся, что URL абсолютный и содержит origin
+        let redirectUrl = paymentData.redirectUrl;
+        if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+          // Если URL относительный, добавляем origin
+          if (redirectUrl.startsWith('/')) {
+            redirectUrl = `${window.location.origin}${redirectUrl}`;
+          } else {
+            redirectUrl = `${window.location.origin}/${redirectUrl}`;
+          }
+        }
+        
+        console.log('Нормализованный URL для перенаправления:', redirectUrl);
+        
+        // Создаем URL для неудачной оплаты
+        const failureUrl = `${window.location.origin}/cart`;
+        
+        // Подготавливаем данные для запроса
+        const requestData = {
           amount: amountTon, // Сумма в TON после конвертации
           minPayment: amountTon, // Минимальная сумма платежа (обычно равна amount)
           numPayments: 1, // Количество платежей (по умолчанию 1)
@@ -125,17 +142,27 @@ export const rocketPayService = {
           description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
           hiddenMessage: `Заказ №${paymentData.orderId} | ${telegramUsername}`, // Скрытое сообщение с данными пользователя
           commentsEnabled: false, // Отключаем комментарии
-          callbackUrl: paymentData.redirectUrl, // URL для перенаправления после оплаты
+          callbackUrl: redirectUrl, // URL для перенаправления после оплаты
           payload: paymentData.orderId, // Дополнительные данные (используем orderId)
           expiredIn: 30, // Время жизни счета в минутах (увеличено до 30 минут)
           // Добавляем параметр для Telegram username
-          telegramUsername: telegramUsername
-        }, {
+          telegramUsername: telegramUsername,
+          // Добавляем параметры для улучшения обработки перенаправления
+          returnUrl: redirectUrl, // Дублируем URL для перенаправления в другом параметре
+          successUrl: redirectUrl, // URL для перенаправления при успешной оплате
+          failureUrl: failureUrl, // URL для перенаправления при неудачной оплате
+        };
+        
+        console.log('Подготовленные данные для запроса:', requestData);
+        
+        // Устанавливаем таймаут для запроса
+        const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, requestData, {
           headers: {
             'Content-Type': 'application/json',
             'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY,
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Pragma': 'no-cache',
+            'Accept': 'application/json'
           },
           timeout: 15000 // Увеличиваем таймаут до 15 секунд
         });

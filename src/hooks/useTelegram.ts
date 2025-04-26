@@ -190,17 +190,130 @@ export function useTelegram() {
   // Функция для открытия внешних ссылок
   const openLink = useCallback((url: string) => {
     try {
-      if (webApp && isReady) {
-        console.log('Открытие внешней ссылки через Telegram WebApp:', url);
-        webApp.openLink(url);
+      console.log('Попытка открытия внешней ссылки:', url);
+      
+      // Проверяем и нормализуем URL
+      let finalUrl = url;
+      
+      // Проверяем, что URL начинается с https:// или http://
+      if (!url.startsWith('https://') && !url.startsWith('http://') && !url.startsWith('tg://')) {
+        // Если URL не начинается с https:// или http://, добавляем https://
+        finalUrl = `https://${url}`;
+        console.log('Добавление https:// к URL, итоговый URL:', finalUrl);
+      }
+      
+      // Проверяем, является ли URL внешним (не внутренним маршрутом приложения)
+      const isExternalUrl = (urlToCheck: string) => {
+        // Проверяем, содержит ли URL домен (например, "example.com")
+        return urlToCheck.includes('://') && !urlToCheck.startsWith('http://localhost') && !urlToCheck.startsWith('https://localhost');
+      };
+      
+      // Проверяем, является ли URL платежным
+      const isPaymentUrl = (urlToCheck: string) => {
+        return urlToCheck.includes('pay.xrocket.tg') || 
+               urlToCheck.includes('xrocket.tg') || 
+               urlToCheck.includes('ton-rocket.com');
+      };
+      
+      // Если это внутренний URL приложения, используем навигацию React Router
+      if (!isExternalUrl(finalUrl) && (finalUrl.includes('/payment') || finalUrl.includes('/checkout'))) {
+        console.log('Обнаружен внутренний URL приложения, используем React Router');
+        // Для внутренних URL используем window.location.href
+        window.location.href = finalUrl;
         return true;
+      }
+      
+      // Проверяем, доступен ли Telegram WebApp API
+      if (webApp && isReady) {
+        console.log('Открытие внешней ссылки через Telegram WebApp:', finalUrl);
+        
+        // Для платежных URL используем особый подход
+        if (isPaymentUrl(finalUrl)) {
+          console.log('Обнаружен платежный URL, используем специальный подход для открытия');
+          
+          try {
+            // Для платежных URL в Telegram используем webApp.openLink
+            webApp.openLink(finalUrl);
+            console.log('Платежный URL успешно открыт через Telegram WebApp.openLink');
+            return true;
+          } catch (webAppError) {
+            console.error('Ошибка при открытии платежного URL через Telegram WebApp:', webAppError);
+            
+            // Если не удалось открыть через Telegram WebApp, пробуем через window.open
+            try {
+              const newWindow = window.open(finalUrl, '_blank');
+              
+              if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
+                console.log('Платежный URL успешно открыт через window.open');
+                return true;
+              } else {
+                console.log('Не удалось открыть платежный URL через window.open, пробуем через location.href');
+                window.location.href = finalUrl;
+                return true;
+              }
+            } catch (windowError) {
+              console.error('Ошибка при открытии платежного URL через window.open:', windowError);
+              window.location.href = finalUrl;
+              return true;
+            }
+          }
+        }
+        
+        // Для обычных внешних URL
+        try {
+          webApp.openLink(finalUrl);
+          console.log('Ссылка успешно открыта через Telegram WebApp');
+          return true;
+        } catch (webAppError) {
+          console.error('Ошибка при открытии ссылки через Telegram WebApp:', webAppError);
+          
+          // Если не удалось открыть через Telegram WebApp, пробуем через window.open
+          try {
+            const newWindow = window.open(finalUrl, '_blank');
+            
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+              console.log('Не удалось открыть ссылку через window.open, пробуем через location.href');
+              window.location.href = finalUrl;
+            }
+            
+            return true;
+          } catch (windowError) {
+            console.error('Ошибка при открытии ссылки через window.open:', windowError);
+            window.location.href = finalUrl;
+            return true;
+          }
+        }
       } else {
-        console.log('Telegram WebApp недоступен, не удалось открыть ссылку');
-        return false;
+        console.log('Telegram WebApp недоступен, открываем ссылку через window.open');
+        
+        // Пробуем открыть ссылку через window.open
+        try {
+          const newWindow = window.open(finalUrl, '_blank');
+          
+          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            console.log('Не удалось открыть ссылку через window.open, пробуем через location.href');
+            window.location.href = finalUrl;
+          }
+          
+          return true;
+        } catch (windowError) {
+          console.error('Ошибка при открытии ссылки через window.open:', windowError);
+          window.location.href = finalUrl;
+          return true;
+        }
       }
     } catch (err) {
-      console.error('Error opening link:', err);
-      return false;
+      console.error('Ошибка при открытии ссылки:', err);
+      
+      // В случае ошибки пробуем открыть ссылку через window.location.href
+      try {
+        console.log('Пробуем открыть ссылку через window.location.href после ошибки');
+        window.location.href = url;
+        return true;
+      } catch (locationError) {
+        console.error('Не удалось открыть ссылку даже через window.location.href:', locationError);
+        return false;
+      }
     }
   }, [webApp, isReady]);
 

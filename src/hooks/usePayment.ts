@@ -43,7 +43,13 @@ export function usePayment() {
       }
       
       // Формируем URL для перенаправления после оплаты
-      const redirectUrl = `${window.location.origin}/payment/success?orderId=${newOrderId}`;
+      // Используем абсолютный URL с origin для надежности
+      const origin = window.location.origin;
+      // Кодируем параметры URL для безопасности
+      const encodedOrderId = encodeURIComponent(newOrderId);
+      const redirectUrl = `${origin}/payment/success?orderId=${encodedOrderId}`;
+      
+      console.log('usePayment - Сформирован URL для перенаправления:', redirectUrl);
       
       const paymentData: RocketPaymentData = {
         orderId: newOrderId,

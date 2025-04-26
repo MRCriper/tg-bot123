@@ -161,73 +161,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   }, [getUserData]);
 
-  // При наличии URL оплаты, перенаправляем пользователя
-  useEffect(() => {
-    if (paymentUrl) {
-      console.log('PaymentForm - Получен URL для оплаты:', paymentUrl);
-      
-      // Добавляем небольшую задержку перед перенаправлением, чтобы избежать проблем с быстрым переходом
-      const redirectTimeout = setTimeout(() => {
-        try {
-          // Проверяем и нормализуем URL
-          let finalUrl = paymentUrl;
-          
-          // Проверяем, что URL начинается с https:// или http://
-          if (paymentUrl.startsWith('https://') || paymentUrl.startsWith('http://')) {
-            // URL уже в правильном формате
-            console.log('PaymentForm - URL в правильном формате, перенаправление на:', finalUrl);
-          } else if (paymentUrl.startsWith('tg://')) {
-            // Обработка специальных Telegram URL
-            console.log('PaymentForm - Обнаружен Telegram URL:', finalUrl);
-          } else {
-            // Если URL не начинается с https:// или http://, добавляем https://
-            finalUrl = `https://${paymentUrl}`;
-            console.log('PaymentForm - Добавление https:// к URL, итоговый URL:', finalUrl);
-          }
-          
-          // Добавляем дополнительную проверку URL перед открытием
-          if (!finalUrl || finalUrl.trim() === '') {
-            throw new Error('Пустой URL для перенаправления');
-          }
-          
-          // Открываем URL в новом окне/вкладке вместо перенаправления
-          // Это предотвратит проблему с быстрым возвратом на страницу приложения
-          console.log('PaymentForm - Открываем URL в новом окне:', finalUrl);
-          const newWindow = window.open(finalUrl, '_blank');
-          
-          // Проверяем, успешно ли открылось новое окно
-          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-            console.log('PaymentForm - Не удалось открыть URL в новом окне, пробуем другие методы');
-            
-            // Если не удалось открыть в новом окне, пробуем через Telegram WebApp API
-            if (isReady) {
-              console.log('PaymentForm - Используем Telegram WebApp.openLink для перенаправления');
-              const success = openLink(finalUrl);
-              console.log('PaymentForm - Результат openLink:', success);
-              
-              if (!success) {
-                console.log('PaymentForm - Не удалось открыть ссылку через Telegram WebApp, используем window.location.href');
-                // Если не удалось открыть ссылку через Telegram WebApp, используем window.location.href
-                window.location.href = finalUrl;
-              }
-            } else {
-              console.log('PaymentForm - Telegram WebApp недоступен, используем window.location.href');
-              // Используем напрямую window.location.href для более надежного перенаправления
-              window.location.href = finalUrl;
-            }
-          }
-        } catch (error) {
-          console.error('PaymentForm - Ошибка при перенаправлении на оплату:', error);
-          
-          // Показываем ошибку пользователю вместо автоматического перенаправления
-          alert(`Ошибка при перенаправлении на страницу оплаты: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
-        }
-      }, 500); // Задержка в 500 мс перед перенаправлением
-      
-      // Очистка таймаута при размонтировании компонента
-      return () => clearTimeout(redirectTimeout);
-    }
-  }, [paymentUrl, navigate, orderId, openLink, isReady]);
+  // Удаляем автоматическое перенаправление при получении URL оплаты
+  // Теперь перенаправление будет происходить только при нажатии на кнопку "Оплатить"
 
   // Настраиваем кнопку Telegram
   useEffect(() => {

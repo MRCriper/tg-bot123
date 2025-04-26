@@ -11,18 +11,22 @@ import { UserData } from '../types';
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
-  const { initiatePayment, isLoading } = usePayment();
+  const { isLoading, resetPayment } = usePayment();
   // Используем хук для управления кнопкой "назад" Telegram
   useBackNavigation();
   
+  // Сбрасываем состояние платежа при монтировании компонента
+  useEffect(() => {
+    resetPayment();
+  }, [resetPayment]);
+  
   // Обработчик отправки формы оформления заказа
-  const handleSubmit = async (userData: UserData) => {
+  const handleSubmit = (userData: UserData) => {
     try {
-      // Инициация платежа
-      await initiatePayment(cart, userData);
+      console.log('CheckoutPage - Форма отправлена, данные пользователя:', userData);
       
-      // Перенаправление на страницу оплаты
-      navigate('/payment');
+      // Перенаправление на страницу оплаты с передачей данных пользователя
+      navigate('/payment', { state: { userData } });
     } catch (error) {
       console.error('Ошибка при оформлении заказа:', error);
       // Можно добавить отображение ошибки для пользователя
