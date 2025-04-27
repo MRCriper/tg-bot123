@@ -107,7 +107,8 @@ export const rocketPayService = {
         }
 
         // Нормализуем имя пользователя Telegram (убираем @ если он есть)
-        const telegramUsername = paymentData.customerTelegram.replace('@', '');
+        // Используем напрямую в запросе, поэтому не создаем отдельную переменную
+        paymentData.customerTelegram = paymentData.customerTelegram.replace('@', '');
 
         // Нормализуем URL для перенаправления
         // Убедимся, что URL абсолютный и содержит origin

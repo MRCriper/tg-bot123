@@ -191,10 +191,7 @@ const Cart: React.FC<CartProps> = ({
     };
   }, [items.length, showMainButton, hideMainButton, navigate]);
 
-  // Переход к оформлению заказа
-  const handleCheckout = () => {
-    navigate('/checkout');
-  };
+  // Удалена неиспользуемая функция handleCheckout
 
   // Переход в каталог товаров
   const goToShopping = () => {
