@@ -1,30 +1,11 @@
 import axios from 'axios';
 import { RocketPaymentData, RocketPayResponse } from '../types';
 
-// URL API Rocket Pay
-// Исправляем потенциальное дублирование /api в URL и убеждаемся, что URL корректный
-const ROCKET_PAY_API_URL = process.env.REACT_APP_ROCKET_PAY_API_URL || 'https://pay.xrocket.tg';
-// Убираем слеш в конце URL, если он есть
-const cleanUrl = ROCKET_PAY_API_URL.endsWith('/') 
-  ? ROCKET_PAY_API_URL.slice(0, -1) 
-  : ROCKET_PAY_API_URL;
-// Формируем конечный URL API
-const API_ENDPOINT = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+// Используем локальный прокси-сервер для обхода проблем с CORS
+const API_ENDPOINT = '/api';
 
 // Логируем URL API для отладки
-console.log('Rocket Pay API URL:', API_ENDPOINT);
-console.log('Rocket Pay API URL из .env:', process.env.REACT_APP_ROCKET_PAY_API_URL);
-
-// Секретный ключ (будет предоставлен при регистрации в Rocket Pay)
-// В реальном приложении этот ключ должен храниться на сервере и не должен быть доступен на клиенте
-const ROCKET_PAY_SECRET_KEY = process.env.REACT_APP_ROCKET_PAY_SECRET_KEY || '';
-console.log('Rocket Pay Secret Key установлен:', ROCKET_PAY_SECRET_KEY ? 'Да' : 'Нет');
-console.log('Длина ключа:', ROCKET_PAY_SECRET_KEY.length);
-
-// Проверяем, что ключ имеет правильный формат (обычно 32-64 символа)
-if (ROCKET_PAY_SECRET_KEY && (ROCKET_PAY_SECRET_KEY.length < 32 || ROCKET_PAY_SECRET_KEY.length > 64)) {
-  console.warn('Внимание: Длина ключа API необычная. Убедитесь, что ключ указан правильно.');
-}
+console.log('Используем локальный прокси-сервер для API Rocket Pay:', API_ENDPOINT);
 
 // URL для получения курса TON/RUB
 const TON_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub';
@@ -98,7 +79,6 @@ export const rocketPayService = {
         // Подробное логирование запроса
         console.log(`Отправка запроса на создание tg-invoice (попытка ${retryCount + 1}/${maxRetries}):`, {
           url: `${API_ENDPOINT}/tg-invoices`,
-          apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
           data: {
             amount: amountTon,
             description: paymentData.description,
@@ -108,12 +88,12 @@ export const rocketPayService = {
           }
         });
 
-        // Проверяем, что API_ENDPOINT и ROCKET_PAY_SECRET_KEY установлены
-        if (!API_ENDPOINT || (API_ENDPOINT === 'https://pay.xrocket.tg/api' && !ROCKET_PAY_SECRET_KEY)) {
-          console.error('Отсутствует API_ENDPOINT или ROCKET_PAY_SECRET_KEY');
+        // Проверяем, что API_ENDPOINT установлен
+        if (!API_ENDPOINT) {
+          console.error('Отсутствует API_ENDPOINT');
           return {
             success: false,
-            error: 'Ошибка конфигурации: Отсутствует API_ENDPOINT или ROCKET_PAY_SECRET_KEY',
+            error: 'Ошибка конфигурации: Отсутствует API_ENDPOINT',
           };
         }
 
@@ -151,160 +131,31 @@ export const rocketPayService = {
           numPayments: 1, // Количество платежей (по умолчанию 1)
           currency: "TONCOIN", // Валюта (TON) - обязательный параметр
           description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
-          hiddenMessage: `Заказ №${paymentData.orderId} | ${telegramUsername}`, // Скрытое сообщение с данными пользователя
+          hiddenMessage: `thank you`, // Скрытое сообщение
           commentsEnabled: false, // Отключаем комментарии
           callbackUrl: redirectUrl, // URL для перенаправления после оплаты
-          payload: paymentData.orderId, // Дополнительные данные (используем orderId)
-          expiredIn: 30 // Время жизни счета в минутах (увеличено до 30 минут)
+          payload: `${paymentData.orderId}`, // Дополнительные данные (используем orderId)
+          expiredIn: 10 // Время жизни счета в минутах
         };
         
         console.log('Подготовленные данные для запроса:', requestData);
         
-        // Улучшенная проверка доступности API перед отправкой основного запроса
-        try {
-          console.log('Проверка доступности API Rocket Pay...');
-          
-          // Используем AbortController для установки таймаута
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
-          
-          const pingResponse = await axios.get(`${API_ENDPOINT}/ping`, {
-            timeout: 5000,
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          console.log('Ответ на ping:', pingResponse.status, pingResponse.statusText);
-        } catch (pingError) {
-          console.error('Ошибка при проверке доступности API:', pingError);
-          
-          // Проверяем, доступен ли сервер вообще, используя несколько методов
-          let serverAvailable = false;
-          
-          // Метод 1: Проверка через fetch с no-cors
-          try {
-            console.log('Проверка доступности сервера Rocket Pay через fetch...');
-            // Используем AbortController для установки таймаута
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
-            
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const serverCheckResponse = await fetch('https://pay.xrocket.tg', { 
-              mode: 'no-cors',
-              cache: 'no-cache',
-              method: 'HEAD',
-              signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            console.log('Сервер Rocket Pay доступен через fetch');
-            serverAvailable = true;
-          } catch (fetchError) {
-            console.error('Ошибка при проверке доступности сервера через fetch:', fetchError);
-          }
-          
-          // Метод 2: Проверка через XMLHttpRequest
-          if (!serverAvailable) {
-            try {
-              console.log('Проверка доступности сервера Rocket Pay через XMLHttpRequest...');
-              
-              // Создаем промис для XMLHttpRequest с таймаутом
-              const checkWithXhr = new Promise<boolean>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.onload = () => resolve(true);
-                xhr.onerror = () => reject(new Error('XHR error'));
-                xhr.ontimeout = () => reject(new Error('XHR timeout'));
-                xhr.timeout = 5000;
-                xhr.open('HEAD', 'https://pay.xrocket.tg');
-                xhr.send();
-              });
-              
-              // Устанавливаем таймаут для промиса
-              const timeoutPromise = new Promise<boolean>((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout')), 5000);
-              });
-              
-              // Выполняем запрос с таймаутом
-              await Promise.race([checkWithXhr, timeoutPromise]);
-              
-              console.log('Сервер Rocket Pay доступен через XMLHttpRequest');
-              serverAvailable = true;
-            } catch (xhrError) {
-              console.error('Ошибка при проверке доступности сервера через XMLHttpRequest:', xhrError);
-            }
-          }
-          
-          // Метод 3: Проверка через axios
-          if (!serverAvailable) {
-            try {
-              console.log('Проверка доступности сервера Rocket Pay через axios...');
-              
-              // Используем AbortController для установки таймаута
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
-              
-              await axios.head('https://pay.xrocket.tg', {
-                timeout: 5000,
-                signal: controller.signal
-              });
-              
-              clearTimeout(timeoutId);
-              console.log('Сервер Rocket Pay доступен через axios');
-              serverAvailable = true;
-            } catch (axiosError) {
-              console.error('Ошибка при проверке доступности сервера через axios:', axiosError);
-            }
-          }
-          
-          // Если сервер доступен хотя бы через один метод, но API не отвечает
-          if (serverAvailable) {
-            console.log('Сервер Rocket Pay доступен, но API не отвечает');
-            
-            // Если сервер доступен, но API не отвечает, возможно проблема с API
-            return {
-              success: false,
-              error: 'Ошибка сети при подключении к платежной системе. Пожалуйста, проверьте ваше соединение и попробуйте снова. Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.'
-            };
-          } else {
-            console.error('Сервер Rocket Pay недоступен через все методы проверки');
-            
-            // Если сервер недоступен, возвращаем соответствующую ошибку
-            return {
-              success: false,
-              error: 'Сервер платежной системы недоступен. Пожалуйста, попробуйте позже. Возможно, проблема с подключением к платежной системе. Проверьте соединение с интернетом и попробуйте снова.'
-            };
-          }
-        }
+        // Пропускаем предварительную проверку доступности API, так как она может вызывать ложные срабатывания
+        console.log('Пропускаем предварительную проверку доступности API');
 
         // Устанавливаем таймаут для запроса
         console.log('Отправка POST запроса на', `${API_ENDPOINT}/tg-invoices`);
-        console.log('Заголовки запроса:', {
-          'Content-Type': 'application/json',
-          'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY ? 'Установлен (скрыт)' : 'Не установлен',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Accept': 'application/json'
-        });
         
         // Создаем конфигурацию для запроса
         const axiosConfig = {
           headers: {
             'Content-Type': 'application/json',
-            'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY,
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
             'Accept': 'application/json'
           },
           timeout: 30000 // Увеличиваем таймаут до 30 секунд
         };
         
-        // Добавляем дополнительные заголовки для предотвращения проблем с CORS
-        if (window.location.protocol === 'https:') {
-          // Используем as any для обхода проверки типов TypeScript
-          (axiosConfig.headers as any)['Referrer-Policy'] = 'no-referrer-when-downgrade';
-        }
-        
-        // Выполняем запрос с обработкой ошибок сети
+        // Выполняем запрос через локальный прокси-сервер
         const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, requestData, axiosConfig);
 
         // Подробное логирование ответа
@@ -490,19 +341,16 @@ export const rocketPayService = {
     // Функция для выполнения запроса с повторными попытками
     const executeWithRetry = async (): Promise<{ status: string, success: boolean }> => {
       try {
-        // В реальности запрос должен отправляться через ваш сервер для безопасности
         // Получаем список счетов и ищем нужный по payload
         console.log(`Отправка запроса на получение списка tg-invoices (попытка ${retryCount + 1}/${maxRetries}):`, {
           url: `${API_ENDPOINT}/tg-invoices`,
-          apiKey: ROCKET_PAY_SECRET_KEY ? 'Ключ установлен' : 'Ключ отсутствует',
           orderId: orderId
         });
 
         const response = await axios.get(`${API_ENDPOINT}/tg-invoices`, {
           headers: {
-            'Rocket-Pay-Key': ROCKET_PAY_SECRET_KEY,
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           },
           timeout: 10000 // Устанавливаем таймаут в 10 секунд
         });

@@ -82,116 +82,29 @@ const PaymentPage: React.FC = () => {
             finalUrl.includes('ton-rocket.com')) {
           console.log('PaymentPage - Обнаружен URL платежной системы Rocket Pay');
           
-          // Улучшенная проверка доступности сервера Rocket Pay перед открытием ссылки
-          console.log('PaymentPage - Проверка доступности сервера Rocket Pay перед открытием ссылки');
+          // Упрощенная логика открытия ссылки без предварительных проверок
+          console.log('PaymentPage - Открываем платежную ссылку:', finalUrl);
           
-          // Используем несколько методов проверки доступности сервера
-          const checkServerAvailability = async (): Promise<boolean> => {
-            // Метод 1: Проверка через fetch с no-cors
+          // Используем метод openLink из хука useTelegram
+          // Это обеспечит корректное открытие ссылки в среде Telegram WebApp
+          const success = openLink(finalUrl);
+          console.log('PaymentPage - Результат открытия ссылки:', success ? 'успешно' : 'неудачно');
+          
+          // Если не удалось открыть через Telegram WebApp, пробуем через window.open
+          if (!success) {
+            console.log('PaymentPage - Пробуем открыть через window.open');
             try {
-              console.log('PaymentPage - Проверка через fetch с no-cors');
-              // Используем AbortController для установки таймаута
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
+              const newWindow = window.open(finalUrl, '_blank');
               
-              await fetch('https://pay.xrocket.tg', { 
-                mode: 'no-cors',
-                cache: 'no-cache',
-                method: 'HEAD',
-                signal: controller.signal
-              });
-              
-              clearTimeout(timeoutId);
-              console.log('PaymentPage - Сервер Rocket Pay доступен через fetch');
-              return true;
-            } catch (fetchError) {
-              console.warn('PaymentPage - Ошибка при проверке через fetch:', fetchError);
-              
-              // Метод 2: Проверка через XMLHttpRequest
-              try {
-                console.log('PaymentPage - Проверка через XMLHttpRequest');
-                
-                // Создаем промис для XMLHttpRequest с таймаутом
-                const checkWithXhr = new Promise<boolean>((resolve, reject) => {
-                  const xhr = new XMLHttpRequest();
-                  xhr.onload = () => resolve(true);
-                  xhr.onerror = () => reject(new Error('XHR error'));
-                  xhr.ontimeout = () => reject(new Error('XHR timeout'));
-                  xhr.timeout = 5000;
-                  xhr.open('HEAD', 'https://pay.xrocket.tg');
-                  xhr.send();
-                });
-                
-                // Устанавливаем таймаут для промиса
-                const timeoutPromise = new Promise<boolean>((_, reject) => {
-                  setTimeout(() => reject(new Error('Timeout')), 5000);
-                });
-                
-                // Выполняем запрос с таймаутом
-                await Promise.race([checkWithXhr, timeoutPromise]);
-                
-                console.log('PaymentPage - Сервер Rocket Pay доступен через XMLHttpRequest');
-                return true;
-              } catch (xhrError) {
-                console.warn('PaymentPage - Ошибка при проверке через XMLHttpRequest:', xhrError);
-                
-                // Если все методы не сработали, возвращаем false
-                console.error('PaymentPage - Сервер Rocket Pay недоступен через все методы проверки');
-                return false;
-              }
-            }
-          };
-          
-          // Проверяем доступность сервера и открываем ссылку
-          checkServerAvailability().then(isAvailable => {
-            if (isAvailable) {
-              console.log('PaymentPage - Сервер Rocket Pay доступен, открываем ссылку');
-            } else {
-              console.warn('PaymentPage - Сервер Rocket Pay недоступен, но все равно пытаемся открыть ссылку');
-            }
-            
-            // Используем метод openLink из хука useTelegram
-            // Это обеспечит корректное открытие ссылки в среде Telegram WebApp
-            const success = openLink(finalUrl);
-            console.log('PaymentPage - Результат открытия ссылки:', success ? 'успешно' : 'неудачно');
-            
-            // Если не удалось открыть через Telegram WebApp, пробуем через window.open
-            if (!success) {
-              console.log('PaymentPage - Пробуем открыть через window.open');
-              try {
-                const newWindow = window.open(finalUrl, '_blank');
-                
-                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                  console.log('PaymentPage - Не удалось открыть через window.open, пробуем через location.href');
-                  window.location.href = finalUrl;
-                }
-              } catch (windowError) {
-                console.error('PaymentPage - Ошибка при открытии через window.open:', windowError);
+              if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                console.log('PaymentPage - Не удалось открыть через window.open, пробуем через location.href');
                 window.location.href = finalUrl;
               }
+            } catch (windowError) {
+              console.error('PaymentPage - Ошибка при открытии через window.open:', windowError);
+              window.location.href = finalUrl;
             }
-          }).catch(error => {
-            console.error('PaymentPage - Ошибка при проверке доступности сервера Rocket Pay:', error);
-            
-            // Все равно пытаемся открыть URL, даже если сервер недоступен
-            const success = openLink(finalUrl);
-            
-            // Если не удалось открыть через Telegram WebApp, пробуем через window.open
-            if (!success) {
-              console.log('PaymentPage - Пробуем открыть через window.open');
-              try {
-                const newWindow = window.open(finalUrl, '_blank');
-                
-                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                  console.log('PaymentPage - Не удалось открыть через window.open, пробуем через location.href');
-                  window.location.href = finalUrl;
-                }
-              } catch (windowError) {
-                console.error('PaymentPage - Ошибка при открытии через window.open:', windowError);
-                window.location.href = finalUrl;
-              }
-            }
-          });
+          }
         } else {
           console.warn('PaymentPage - URL не содержит домен платежной системы Rocket Pay:', finalUrl);
           // Все равно пытаемся открыть URL
