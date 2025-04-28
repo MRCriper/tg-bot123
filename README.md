@@ -73,7 +73,35 @@ ngrok http 3000
 5. Для деплоя на Replit:
    - Создайте новый Repl с импортом из GitHub
    - Настройте переменные окружения в секции "Secrets"
-   - Настройте команду запуска: `npm start`
+   - Проект уже содержит необходимые файлы конфигурации для Replit (.replit, replit.nix)
+   - Запуск проекта происходит автоматически через команду `npm run dev`
+
+## Решение проблем с запуском на Replit
+
+Если при запуске на Replit возникает ошибка:
+```
+Invalid options object. Dev Server has been initialized using an options object that does not match the API schema.
+options.allowedHosts[0] should be a non-empty string.
+```
+
+Это связано с настройками webpack-dev-server в Replit. Проект уже содержит необходимые файлы конфигурации:
+
+1. `.env.development` - содержит настройки для webpack-dev-server:
+```
+HOST=0.0.0.0
+PORT=3000
+WDS_SOCKET_HOST=0.0.0.0
+WDS_SOCKET_PORT=0
+DANGEROUSLY_DISABLE_HOST_CHECK=true
+FAST_REFRESH=false
+```
+
+2. `.replit` - содержит настройки для запуска проекта на Replit
+
+Если проблема сохраняется:
+- Убедитесь, что файлы `.env.development` и `.replit` присутствуют в корне проекта
+- Перезапустите Repl (используйте кнопку "Stop" и затем "Run")
+- Проверьте, что в Secrets Replit не переопределены переменные окружения, которые могут конфликтовать с настройками
 
 ## Структура проекта
 
