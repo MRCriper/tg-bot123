@@ -2,10 +2,12 @@ import axios from 'axios';
 import { RocketPaymentData, RocketPayResponse } from '../types';
 
 // Используем локальный прокси-сервер для обхода проблем с CORS
+// Убедимся, что URL не содержит слеш в конце
 const API_ENDPOINT = '/api';
 
 // Логируем URL API для отладки
 console.log('Используем локальный прокси-сервер для API Rocket Pay:', API_ENDPOINT);
+console.log('Полный URL API из .env:', process.env.REACT_APP_ROCKET_PAY_API_URL);
 
 // URL для получения курса TON/RUB
 const TON_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub';
