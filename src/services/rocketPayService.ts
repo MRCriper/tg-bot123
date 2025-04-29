@@ -317,11 +317,11 @@ export const rocketPayService = {
         
         // Определяем, является ли id инвойсом или payload (orderId)
         // Если id содержит только цифры, считаем его инвойсом, иначе - payload
-        const isInvoiceId = /^\d+$/.test(id);
+        // const isInvoiceId = /^\d+$/.test(id);
         
         let response;
-        if (isInvoiceId) {
-          // Получаем информацию о конкретном инвойсе по ID
+        // if (isInvoiceId) {
+        //   // Получаем информацию о конкретном инвойсе по ID
           console.log(`Проверка статуса по ID инвойса: ${id}`);
           response = await axios.get(
             `https://pay.xrocket.tg/tg-invoices/${id}`,
@@ -333,25 +333,25 @@ export const rocketPayService = {
               timeout: 10000 // Устанавливаем таймаут в 10 секунд
             }
           );
-        } else {
-          // Получаем информацию об инвойсе по payload (orderId)
-          console.log(`Проверка статуса по payload (orderId): ${id}`);
-          response = await axios.get(
-            `https://pay.xrocket.tg/tg-invoices?payload=${id}`,
-            {
-              headers: {
-                'Rocket-Pay-Key': apiKey,
-                'Content-Type': 'application/json'
-              },
-              timeout: 10000 // Устанавливаем таймаут в 10 секунд
-            }
-          );
-        }
+        // } else {
+        //   // Получаем информацию об инвойсе по payload (orderId)
+        //   console.log(`Проверка статуса по payload (orderId): ${id}`);
+        //   response = await axios.get(
+        //     `https://pay.xrocket.tg/tg-invoices?payload=${id}`,
+        //     {
+        //       headers: {
+        //         'Rocket-Pay-Key': apiKey,
+        //         'Content-Type': 'application/json'
+        //       },
+        //       timeout: 10000 // Устанавливаем таймаут в 10 секунд
+        //     }
+        //   );
+        // }
         
         console.log('Ответ API при проверке статуса:', response.data);
         
         if (response.data && response.data.success) {
-          if (isInvoiceId && response.data.data) {
+          // if (isInvoiceId && response.data.data) {
             // Обработка ответа для запроса по ID инвойса
             // Преобразуем статус в понятный формат
             let status = 'unknown';
@@ -368,31 +368,31 @@ export const rocketPayService = {
               status: status,
               success: true,
             };
-          } else if (!isInvoiceId && response.data.data) {
-            // Обработка ответа для запроса по payload (orderId)
-            // Ищем счет с нужным payload
-            const invoice = response.data.data.find((inv: any) => inv.payload === id);
+          // } else if (!isInvoiceId && response.data.data) {
+          //   // Обработка ответа для запроса по payload (orderId)
+          //   // Ищем счет с нужным payload
+          //   const invoice = response.data.data.find((inv: any) => inv.payload === id);
             
-            if (invoice) {
-              // Преобразуем статус в понятный формат
-              let status = 'unknown';
-              if (invoice.status === 'active') {
-                status = 'PENDING';
-              } else if (invoice.status === 'paid') {
-                status = 'PAID';
-              } else if (invoice.status === 'expired') {
-                status = 'CANCELLED';
-              }
+          //   if (invoice) {
+          //     // Преобразуем статус в понятный формат
+          //     let status = 'unknown';
+          //     if (invoice.status === 'active') {
+          //       status = 'PENDING';
+          //     } else if (invoice.status === 'paid') {
+          //       status = 'PAID';
+          //     } else if (invoice.status === 'expired') {
+          //       status = 'CANCELLED';
+          //     }
               
-              console.log(`Найден счет для заказа ${id}, статус: ${status}`);
-              return {
-                status: status,
-                success: true,
-              };
-            } else {
-              console.log(`Счет для заказа ${id} не найден в списке`);
-            }
-          }
+          //     console.log(`Найден счет для заказа ${id}, статус: ${status}`);
+          //     return {
+          //       status: status,
+          //       success: true,
+          //     };
+          //   } else {
+          //     console.log(`Счет для заказа ${id} не найден в списке`);
+          //   }
+          // }
         }
         
         console.error('Ответ API не содержит данных об инвойсе:', response.data);
