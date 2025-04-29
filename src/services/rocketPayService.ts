@@ -114,7 +114,7 @@ export const rocketPayService = {
         // Проверяем доступность API перед отправкой основного запроса
         try {
           console.log('Проверка доступности API XRocket...');
-          await axios.get('https://pay.xrocket.tg/api/health', { 
+          await axios.get('https://pay.xrocket.tg/health', { 
             timeout: 5000,
             headers: {
               'Cache-Control': 'no-cache',
@@ -139,7 +139,7 @@ export const rocketPayService = {
         });
 
         const response = await axios.post(
-          'https://pay.xrocket.tg/api/tg-invoices', 
+          'https://pay.xrocket.tg/tg-invoices',
           {
             amount: amountTon,
             minPayment: amountTon,
@@ -232,6 +232,15 @@ export const rocketPayService = {
               error: 'Ошибка авторизации: Неверный ключ API. Проверьте настройки API-ключа в .env файле.',
             };
           }
+          
+          // Если ошибка 400 (Bad Request), выводим подробную информацию
+          if (error.response?.status === 400) {
+            console.error('Получена ошибка 400 Bad Request:', error.response.data);
+            return {
+              success: false,
+              error: `Ошибка в запросе: ${error.response.data?.message || 'Неверные параметры запроса'}`,
+            };
+          }
         }
         
         // Возвращаем ошибку
@@ -317,7 +326,7 @@ export const rocketPayService = {
           // Получаем информацию о конкретном инвойсе по ID
           console.log(`Проверка статуса по ID инвойса: ${id}`);
           response = await axios.get(
-            `https://pay.xrocket.tg/api/tg-invoices/${id}`,
+            `https://pay.xrocket.tg/tg-invoices/${id}`,
             {
               headers: {
                 'Rocket-Pay-Key': apiKey,
@@ -330,7 +339,7 @@ export const rocketPayService = {
           // Получаем информацию об инвойсе по payload (orderId)
           console.log(`Проверка статуса по payload (orderId): ${id}`);
           response = await axios.get(
-            `https://pay.xrocket.tg/api/tg-invoices?payload=${id}`,
+            `https://pay.xrocket.tg/tg-invoices?payload=${id}`,
             {
               headers: {
                 'Rocket-Pay-Key': apiKey,
