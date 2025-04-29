@@ -111,7 +111,33 @@ export const rocketPayService = {
         
         console.log(`Отправка запроса на создание инвойса (попытка ${retryCount + 1}/${maxRetries})`);
         
+        // Проверяем доступность API перед отправкой основного запроса
+        try {
+          console.log('Проверка доступности API XRocket...');
+          await axios.get('https://pay.xrocket.tg/api/health', { 
+            timeout: 5000,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          console.log('API XRocket доступен');
+        } catch (healthError) {
+          console.warn('Не удалось проверить доступность API XRocket:', healthError);
+          // Продолжаем выполнение, даже если проверка не удалась
+        }
+
         // Создаем инвойс с использованием обновленного API XRocket
+        console.log('Отправка запроса на создание инвойса с параметрами:', {
+          amount: amountTon,
+          minPayment: amountTon,
+          currency: "TONCOIN",
+          description: `${paymentData.description} (${paymentData.amount} ₽)`,
+          expiredIn: 300,
+          callbackUrl: redirectUrl,
+          payload: `${paymentData.orderId}`
+        });
+
         const response = await axios.post(
           'https://pay.xrocket.tg/api/tg-invoices', 
           {
@@ -131,8 +157,11 @@ export const rocketPayService = {
           {
             headers: {
               'Rocket-Pay-Key': apiKey,
-              'Content-Type': 'application/json'
-            }
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+            timeout: 15000 // Увеличиваем таймаут до 15 секунд
           }
         );
         

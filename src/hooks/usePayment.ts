@@ -18,6 +18,32 @@ export function usePayment() {
     return `order_${timestamp}_${random}`;
   }, []);
 
+  // Проверка соединения с интернетом
+  const checkInternetConnection = useCallback(async (): Promise<boolean> => {
+    try {
+      console.log('usePayment - Проверка соединения с интернетом');
+      
+      // Проверяем соединение с интернетом через запрос к Google
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch('https://www.google.com/generate_204', {
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-cache',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log('usePayment - Соединение с интернетом доступно');
+      return true;
+    } catch (error) {
+      console.error('usePayment - Ошибка при проверке соединения с интернетом:', error);
+      return false;
+    }
+  }, []);
+
   // Инициация платежа
   const initiatePayment = useCallback(async (cart: Cart, userData: UserData) => {
     console.log('usePayment - Начало инициации платежа');
@@ -25,6 +51,12 @@ export function usePayment() {
     setPaymentError(null);
     
     try {
+      // Проверяем соединение с интернетом
+      const isConnected = await checkInternetConnection();
+      if (!isConnected) {
+        throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова.');
+      }
+      
       // Проверяем, что имя пользователя Telegram не пустое
       if (!userData.telegramUsername || userData.telegramUsername.trim() === '') {
         throw new Error('Имя пользователя Telegram не указано');
@@ -68,56 +100,115 @@ export function usePayment() {
         redirectUrl: redirectUrl
       });
 
-      // Пропускаем проверку соединения с интернетом, так как она может вызывать ложные срабатывания
-      console.log('usePayment - Пропускаем проверку соединения с интернетом');
-
-      // Отправляем запрос в Rocket Pay
+      // Отправляем запрос в Rocket Pay с повторными попытками
       console.log('usePayment - Отправка запроса в Rocket Pay');
       
-      // Устанавливаем таймаут для запроса
-      const timeoutPromise = new Promise<RocketPayResponse>((_, reject) => {
-        setTimeout(() => reject(new Error('Превышено время ожидания ответа от платежной системы')), 30000);
-      });
+      // Максимальное количество попыток
+      const maxRetries = 2;
+      let currentRetry = 0;
+      let lastError: Error | null = null;
+      let paymentResult: RocketPayResponse | null = null;
       
-      // Выполняем запрос с таймаутом
-      const result = await Promise.race([
-        rocketPayService.initiatePayment(paymentData),
-        timeoutPromise
-      ]);
-      
-      console.log('usePayment - Получен ответ от Rocket Pay:', result);
-
-      if (result.success && result.paymentUrl) {
-        console.log('usePayment - Платеж успешно создан, URL:', result.paymentUrl);
-        
-        // Проверяем, что URL не пустой
-        if (!result.paymentUrl || result.paymentUrl.trim() === '') {
-          throw new Error('Получен пустой URL для оплаты');
+      while (currentRetry <= maxRetries) {
+        try {
+          // Устанавливаем таймаут для запроса
+          const timeoutPromise = new Promise<RocketPayResponse>((_, reject) => {
+            setTimeout(() => reject(new Error('Превышено время ожидания ответа от платежной системы')), 30000);
+          });
+          
+          // Выполняем запрос с таймаутом
+          const result = await Promise.race([
+            rocketPayService.initiatePayment(paymentData),
+            timeoutPromise
+          ]);
+          
+          console.log('usePayment - Получен ответ от Rocket Pay:', result);
+          
+          // Если запрос успешен, сохраняем результат и выходим из цикла
+          if (result.success && result.paymentUrl) {
+            console.log('usePayment - Платеж успешно создан, URL:', result.paymentUrl);
+            paymentResult = result;
+            break;
+          } else {
+            // Если ошибка не связана с сетью, сохраняем результат и выходим из цикла
+            if (!result.error?.includes('Network Error') && 
+                !result.error?.includes('timeout') && 
+                !result.error?.includes('соединение')) {
+              console.log('usePayment - Получена ошибка, не связанная с сетью:', result.error);
+              paymentResult = result;
+              break;
+            }
+            
+            // Иначе сохраняем ошибку и пробуем еще раз
+            lastError = new Error(result.error || 'Неизвестная ошибка');
+            console.log(`usePayment - Сетевая ошибка, попытка ${currentRetry + 1} из ${maxRetries + 1}:`, result.error);
+          }
+        } catch (error) {
+          // Сохраняем ошибку
+          lastError = error instanceof Error ? error : new Error('Неизвестная ошибка');
+          console.error(`usePayment - Ошибка при выполнении запроса, попытка ${currentRetry + 1} из ${maxRetries + 1}:`, error);
         }
         
-        setPaymentUrl(result.paymentUrl);
+        // Увеличиваем счетчик попыток
+        currentRetry++;
         
-        // Сохраняем ID инвойса для последующей проверки статуса
-        if (result.invoiceId) {
-          console.log('usePayment - Сохранен ID инвойса:', result.invoiceId);
-          setInvoiceId(result.invoiceId);
+        // Если это не последняя попытка, ждем перед следующей
+        if (currentRetry <= maxRetries) {
+          const delay = Math.pow(2, currentRetry - 1) * 1000; // 1с, 2с, 4с, ...
+          console.log(`usePayment - Ожидание ${delay}мс перед следующей попыткой...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          // Проверяем соединение перед повторной попыткой
+          const isStillConnected = await checkInternetConnection();
+          if (!isStillConnected) {
+            throw new Error('Отсутствует подключение к интернету. Пожалуйста, проверьте ваше соединение и попробуйте снова.');
+          }
         }
-      } else {
-        console.error('usePayment - Ошибка при создании платежа:', result.error);
-        
-        // Преобразуем общие ошибки в более понятные для пользователя
-        let userFriendlyError = result.error || 'Неизвестная ошибка при создании платежа';
-        
-        if (userFriendlyError.includes('Network Error')) {
-          userFriendlyError = 'Ошибка сети при подключении к платежной системе. Пожалуйста, проверьте ваше соединение и попробуйте снова.';
-        } else if (userFriendlyError.includes('timeout')) {
-          userFriendlyError = 'Превышено время ожидания ответа от платежной системы. Пожалуйста, попробуйте снова позже.';
-        } else if (userFriendlyError.includes('CORS')) {
-          userFriendlyError = 'Ошибка доступа к платежной системе. Пожалуйста, попробуйте снова позже или обратитесь в поддержку.';
-        }
-        
-        setPaymentError(userFriendlyError);
       }
+      
+      // Обрабатываем результат после всех попыток
+      if (paymentResult) {
+        if (paymentResult.success && paymentResult.paymentUrl) {
+          // Проверяем, что URL не пустой
+          if (!paymentResult.paymentUrl || paymentResult.paymentUrl.trim() === '') {
+            throw new Error('Получен пустой URL для оплаты');
+          }
+          
+          setPaymentUrl(paymentResult.paymentUrl);
+          
+          // Сохраняем ID инвойса для последующей проверки статуса
+          if (paymentResult.invoiceId) {
+            console.log('usePayment - Сохранен ID инвойса:', paymentResult.invoiceId);
+            setInvoiceId(paymentResult.invoiceId);
+          }
+          
+          return paymentResult;
+        } else {
+          console.error('usePayment - Ошибка при создании платежа:', paymentResult.error);
+          
+          // Преобразуем общие ошибки в более понятные для пользователя
+          let userFriendlyError = paymentResult.error || 'Неизвестная ошибка при создании платежа';
+          
+          if (userFriendlyError.includes('Network Error')) {
+            userFriendlyError = 'Ошибка сети при подключении к платежной системе. Пожалуйста, проверьте ваше соединение и попробуйте снова.';
+          } else if (userFriendlyError.includes('timeout')) {
+            userFriendlyError = 'Превышено время ожидания ответа от платежной системы. Пожалуйста, попробуйте снова позже.';
+          } else if (userFriendlyError.includes('CORS')) {
+            userFriendlyError = 'Ошибка доступа к платежной системе. Пожалуйста, попробуйте снова позже или обратитесь в поддержку.';
+          }
+          
+          setPaymentError(userFriendlyError);
+          return paymentResult;
+        }
+      }
+      
+      // Если все попытки не удались и нет результата, выбрасываем последнюю ошибку
+      if (lastError) {
+        throw lastError;
+      }
+      
+      // Если дошли до этой точки, значит что-то пошло не так
+      throw new Error('Не удалось создать платеж после нескольких попыток');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       console.error('Ошибка при инициации платежа:', errorMessage);
