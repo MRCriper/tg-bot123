@@ -157,8 +157,7 @@ export const rocketPayService = {
             headers: {
               'Rocket-Pay-Key': apiKey,
               'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
+              'accept': 'application/json'
             },
             timeout: 15000 // Увеличиваем таймаут до 15 секунд
           }
