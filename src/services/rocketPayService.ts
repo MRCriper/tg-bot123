@@ -146,12 +146,12 @@ export const rocketPayService = {
             currency: "TONCOIN",
             description: `${paymentData.description} (${paymentData.amount} ₽)`,
             hiddenMessage: "thank you",
-            commentsEnabled: false,
-            expiredIn: 300, // 5 минут в секундах
+            commentsEnabled: false, // 5 минут в секундах
             // Используем redirectUrl как callbackUrl
             callbackUrl: redirectUrl,
             // Используем orderId как payload
-            payload: `${paymentData.orderId}`
+            payload: `${paymentData.orderId}`,
+            expiredIn: 300
           },
           {
             headers: {
