@@ -4,15 +4,15 @@ const axios = require('axios');
 const bodyParser = require('body-parser');
 const path = require('path');
 
-// Загружаем переменные окружения из .env и .env.server (если существует)
-require('dotenv').config();
-// Пытаемся загрузить .env.server, если он существует
+// Сначала загружаем .env.server с приоритетом, если он существует
 try {
-  require('dotenv').config({ path: path.resolve(process.cwd(), '.env.server') });
+  require('dotenv').config({ path: path.resolve(process.cwd(), '.env.server'), override: true });
   console.log('Загружены переменные окружения из .env.server');
 } catch (err) {
   console.log('Файл .env.server не найден или не может быть загружен');
 }
+// Затем загружаем общие переменные окружения из .env
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
