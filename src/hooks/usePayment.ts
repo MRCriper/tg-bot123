@@ -9,6 +9,7 @@ export function usePayment() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
   // Функция для создания уникального ID заказа
   const generateOrderId = useCallback(() => {
@@ -95,6 +96,12 @@ export function usePayment() {
         }
         
         setPaymentUrl(result.paymentUrl);
+        
+        // Сохраняем ID инвойса для последующей проверки статуса
+        if (result.invoiceId) {
+          console.log('usePayment - Сохранен ID инвойса:', result.invoiceId);
+          setInvoiceId(result.invoiceId);
+        }
       } else {
         console.error('usePayment - Ошибка при создании платежа:', result.error);
         
@@ -139,8 +146,12 @@ export function usePayment() {
     setIsLoading(true);
     
     try {
-      console.log('usePayment - Отправка запроса на проверку статуса в Rocket Pay');
-      const statusResult = await rocketPayService.checkPaymentStatus(checkOrderId);
+      // Используем invoiceId для проверки статуса, если он доступен
+      // В противном случае используем orderId (для обратной совместимости)
+      const idToCheck = invoiceId || checkOrderId;
+      console.log('usePayment - Отправка запроса на проверку статуса в Rocket Pay, ID:', idToCheck);
+      
+      const statusResult = await rocketPayService.checkPaymentStatus(idToCheck);
       console.log('usePayment - Получен результат проверки статуса:', statusResult);
       return statusResult;
     } catch (error) {
@@ -156,6 +167,7 @@ export function usePayment() {
     setPaymentUrl(null);
     setPaymentError(null);
     setOrderId(null);
+    setInvoiceId(null);
     setIsLoading(false);
   }, []);
 
@@ -164,6 +176,7 @@ export function usePayment() {
     paymentError,
     isLoading,
     orderId,
+    invoiceId,
     initiatePayment,
     checkPaymentStatus,
     resetPayment

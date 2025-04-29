@@ -24,17 +24,20 @@ app.use(bodyParser.json());
 // Получаем API ключ и URL из переменных окружения
 // Node.js не использует префикс REACT_APP_, поэтому создаем переменные без префикса
 const ROCKET_PAY_SECRET_KEY = process.env.ROCKET_PAY_SECRET_KEY || process.env.REACT_APP_ROCKET_PAY_SECRET_KEY;
+const XROCKET_API_KEY = process.env.XROCKET_API_KEY || process.env.REACT_APP_XROCKET_API_KEY || ROCKET_PAY_SECRET_KEY;
 // Убираем слеш в конце URL, если он есть
 const ROCKET_PAY_API_URL = (process.env.ROCKET_PAY_API_URL || process.env.REACT_APP_ROCKET_PAY_API_URL || 'https://pay.xrocket.tg/api').replace(/\/$/, '');
 
 // Добавляем дополнительное логирование для отладки
 console.log('Полный URL API:', ROCKET_PAY_API_URL);
-console.log('Длина API ключа:', ROCKET_PAY_SECRET_KEY ? ROCKET_PAY_SECRET_KEY.length : 0);
+console.log('Длина API ключа Rocket Pay:', ROCKET_PAY_SECRET_KEY ? ROCKET_PAY_SECRET_KEY.length : 0);
+console.log('Длина API ключа XRocket:', XROCKET_API_KEY ? XROCKET_API_KEY.length : 0);
 
 // Логируем конфигурацию при запуске
 console.log('Прокси-сервер для Rocket Pay API');
 console.log('API URL:', ROCKET_PAY_API_URL);
-console.log('API Key установлен:', ROCKET_PAY_SECRET_KEY ? 'Да' : 'Нет');
+console.log('Rocket Pay API Key установлен:', ROCKET_PAY_SECRET_KEY ? 'Да' : 'Нет');
+console.log('XRocket API Key установлен:', XROCKET_API_KEY ? 'Да' : 'Нет');
 
 // Прокси для создания tg-invoices
 app.post('/api/tg-invoices', async (req, res) => {
@@ -43,11 +46,11 @@ app.post('/api/tg-invoices', async (req, res) => {
     console.log('Данные запроса:', req.body);
 
     // Проверяем, что API ключ установлен
-    if (!ROCKET_PAY_SECRET_KEY) {
-      console.error('API ключ не установлен');
+    if (!XROCKET_API_KEY) {
+      console.error('API ключ XRocket не установлен');
       return res.status(500).json({
         success: false,
-        message: 'API ключ не установлен в переменных окружения'
+        message: 'API ключ XRocket не установлен в переменных окружения'
       });
     }
 
@@ -56,7 +59,7 @@ app.post('/api/tg-invoices', async (req, res) => {
     console.log('Отправка запроса к API:', apiUrl);
     console.log('Заголовки запроса:', {
       'Content-Type': 'application/json',
-      'X-API-KEY': ROCKET_PAY_SECRET_KEY ? `${ROCKET_PAY_SECRET_KEY.substring(0, 4)}...` : 'не установлен',
+      'Rocket-Pay-Key': XROCKET_API_KEY ? `${XROCKET_API_KEY.substring(0, 4)}...` : 'не установлен',
       'Accept': 'application/json'
     });
 
@@ -64,7 +67,7 @@ app.post('/api/tg-invoices', async (req, res) => {
     const response = await axios.post(apiUrl, req.body, {
       headers: {
         'Content-Type': 'application/json',
-        'X-API-KEY': ROCKET_PAY_SECRET_KEY,
+        'Rocket-Pay-Key': XROCKET_API_KEY,
         'Accept': 'application/json'
       },
       timeout: 30000 // Увеличиваем таймаут до 30 секунд

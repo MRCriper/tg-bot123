@@ -1,16 +1,11 @@
 import axios from 'axios';
 import { RocketPaymentData, RocketPayResponse } from '../types';
 
-// Используем локальный прокси-сервер для обхода проблем с CORS
-// Убедимся, что URL не содержит слеш в конце
-const API_ENDPOINT = '/api';
-
-// Логируем URL API для отладки
-console.log('Используем локальный прокси-сервер для API Rocket Pay:', API_ENDPOINT);
-console.log('Полный URL API из .env:', process.env.REACT_APP_ROCKET_PAY_API_URL);
-
 // URL для получения курса TON/RUB
 const TON_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub';
+
+// Логируем информацию для отладки
+console.log('Используем обновленный API XRocket для платежей');
 
 // Сервис для взаимодействия с платежной системой Rocket Pay
 export const rocketPayService = {
@@ -61,8 +56,9 @@ export const rocketPayService = {
       return parseFloat((amountRub / approximateRate).toFixed(9));
     }
   },
+  
   /**
-   * Инициирует платеж в Rocket Pay
+   * Создает инвойс в XRocket
    * @param paymentData - данные для создания платежа
    * @returns - объект с URL для перенаправления на платежную форму или ошибка
    */
@@ -78,27 +74,6 @@ export const rocketPayService = {
         // Конвертируем сумму из рублей в TON
         const amountTon = await this.convertRubToTon(paymentData.amount);
         
-        // Подробное логирование запроса
-        console.log(`Отправка запроса на создание tg-invoice (попытка ${retryCount + 1}/${maxRetries}):`, {
-          url: `${API_ENDPOINT}/tg-invoices`,
-          data: {
-            amount: amountTon,
-            description: paymentData.description,
-            callbackUrl: paymentData.redirectUrl,
-            payload: paymentData.orderId,
-            originalAmountRub: paymentData.amount
-          }
-        });
-
-        // Проверяем, что API_ENDPOINT установлен
-        if (!API_ENDPOINT) {
-          console.error('Отсутствует API_ENDPOINT');
-          return {
-            success: false,
-            error: 'Ошибка конфигурации: Отсутствует API_ENDPOINT',
-          };
-        }
-
         // Проверяем, что customerTelegram не пустой
         if (!paymentData.customerTelegram) {
           console.error('Отсутствует customerTelegram в данных платежа');
@@ -109,11 +84,9 @@ export const rocketPayService = {
         }
 
         // Нормализуем имя пользователя Telegram (убираем @ если он есть)
-        // Используем напрямую в запросе, поэтому не создаем отдельную переменную
         paymentData.customerTelegram = paymentData.customerTelegram.replace('@', '');
 
         // Нормализуем URL для перенаправления
-        // Убедимся, что URL абсолютный и содержит origin
         let redirectUrl = paymentData.redirectUrl;
         if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
           // Если URL относительный, добавляем origin
@@ -126,53 +99,50 @@ export const rocketPayService = {
         
         console.log('Нормализованный URL для перенаправления:', redirectUrl);
         
-        // Подготавливаем данные для запроса в соответствии с документацией API
-        // Строго следуем документации API для создания tg-invoices
-        const requestData = {
-          amount: amountTon, // Сумма в TON после конвертации (до 9 десятичных знаков)
-          minPayment: amountTon, // Минимальная сумма платежа (обычно равна amount)
-          numPayments: 1, // Количество платежей (по умолчанию 1)
-          currency: "TONCOIN", // Валюта (TON) - обязательный параметр
-          description: `${paymentData.description} (${paymentData.amount} ₽)`, // Добавляем сумму в рублях в описание
-          hiddenMessage: `thank you`, // Скрытое сообщение
-          commentsEnabled: false, // Отключаем комментарии
-          callbackUrl: redirectUrl, // URL для перенаправления после оплаты
-          payload: `${paymentData.orderId}`, // Дополнительные данные (используем orderId)
-          expiredIn: 10 // Время жизни счета в минутах
-        };
+        // Получаем API ключ из переменных окружения
+        const apiKey = process.env.REACT_APP_XROCKET_API_KEY;
+        if (!apiKey) {
+          console.error('Отсутствует API ключ XRocket');
+          return {
+            success: false,
+            error: 'Ошибка конфигурации: Отсутствует API ключ XRocket',
+          };
+        }
         
-        console.log('Подготовленные данные для запроса:', requestData);
+        console.log(`Отправка запроса на создание инвойса (попытка ${retryCount + 1}/${maxRetries})`);
         
-        // Пропускаем предварительную проверку доступности API, так как она может вызывать ложные срабатывания
-        console.log('Пропускаем предварительную проверку доступности API');
-
-        // Устанавливаем таймаут для запроса
-        console.log('Отправка POST запроса на', `${API_ENDPOINT}/tg-invoices`);
-        
-        // Создаем конфигурацию для запроса
-        const axiosConfig = {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+        // Создаем инвойс с использованием обновленного API XRocket
+        const response = await axios.post(
+          'https://pay.xrocket.tg/api/tg-invoices', 
+          {
+            amount: amountTon,
+            minPayment: amountTon,
+            numPayments: 1,
+            currency: "TONCOIN",
+            description: `${paymentData.description} (${paymentData.amount} ₽)`,
+            hiddenMessage: "thank you",
+            commentsEnabled: false,
+            expiredIn: 300, // 5 минут в секундах
+            // Используем redirectUrl как callbackUrl
+            callbackUrl: redirectUrl,
+            // Используем orderId как payload
+            payload: `${paymentData.orderId}`
           },
-          timeout: 30000 // Увеличиваем таймаут до 30 секунд
-        };
+          {
+            headers: {
+              'Rocket-Pay-Key': apiKey,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
         
-        // Выполняем запрос через локальный прокси-сервер
-        const response = await axios.post(`${API_ENDPOINT}/tg-invoices`, requestData, axiosConfig);
-
-        // Подробное логирование ответа
-        console.log('Ответ API:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: response.data
-        });
-
+        console.log('Ответ API:', response.data);
+        
         // Проверяем ответ
         if (response.data && response.data.success && response.data.data && response.data.data.link) {
           console.log('Успешно получен URL для оплаты:', response.data.data.link);
           
-          // Проверяем, что URL не пустой и имеет правильный формат
+          // Проверяем, что URL не пустой
           if (!response.data.data.link || response.data.data.link.trim() === '') {
             console.error('Получен пустой URL для оплаты');
             return {
@@ -188,26 +158,17 @@ export const rocketPayService = {
             console.log('Добавлен протокол https:// к URL:', paymentUrl);
           }
           
-          // Проверяем, что URL содержит домен платежной системы
-          if (!paymentUrl.includes('pay.xrocket.tg') && 
-              !paymentUrl.includes('xrocket.tg') && 
-              !paymentUrl.includes('ton-rocket.com')) {
-            console.warn('URL не содержит ожидаемый домен платежной системы:', paymentUrl);
-          }
-          
           return {
             success: true,
             paymentUrl: paymentUrl,
+            // Сохраняем ID инвойса для последующей проверки статуса
+            invoiceId: response.data.data.id
           };
         } else {
           console.error('Ответ API не содержит URL для оплаты:', response.data);
-          // Более подробная информация об ошибке
           let errorMessage = 'Ошибка при создании платежа: Не получен URL для оплаты';
           if (response.data && !response.data.success) {
             errorMessage = response.data.message || errorMessage;
-            if (response.data.errors && Array.isArray(response.data.errors)) {
-              errorMessage += '. ' + response.data.errors.join('. ');
-            }
           }
           return {
             success: false,
@@ -223,16 +184,7 @@ export const rocketPayService = {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
-            headers: error.response?.headers,
-            config: {
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: error.config?.headers,
-              data: error.config?.data
-            },
-            message: error.message,
-            code: error.code,
-            isAxiosError: error.isAxiosError
+            message: error.message
           });
           
           lastError = error;
@@ -251,35 +203,6 @@ export const rocketPayService = {
               error: 'Ошибка авторизации: Неверный ключ API. Проверьте настройки API-ключа в .env файле.',
             };
           }
-          
-          // Если ошибка 403 (Forbidden)
-          if (error.response?.status === 403) {
-            console.error('Получена ошибка 403 Forbidden - доступ запрещен');
-            return {
-              success: false,
-              error: 'Доступ запрещен: У вас нет прав для выполнения этой операции. Проверьте API-ключ.',
-            };
-          }
-          
-          // Если ошибка 404 (Not Found)
-          if (error.response?.status === 404) {
-            console.error('Получена ошибка 404 Not Found - ресурс не найден');
-            return {
-              success: false,
-              error: 'Ресурс не найден: Проверьте правильность URL API в .env файле.',
-            };
-          }
-          
-          // Если ошибка связана с CORS
-          if (error.message.includes('Network Error') || error.message.includes('CORS')) {
-            console.error('Обнаружена ошибка CORS или сетевая ошибка');
-            return {
-              success: false,
-              error: 'Сетевая ошибка: Возможно, проблема с CORS или доступом к API. Проверьте настройки безопасности браузера или используйте прокси-сервер.',
-            };
-          }
-        } else {
-          console.error('Не-Axios ошибка:', error);
         }
         
         // Возвращаем ошибку
@@ -333,10 +256,10 @@ export const rocketPayService = {
 
   /**
    * Проверяет статус платежа
-   * @param orderId - идентификатор заказа (payload)
+   * @param id - идентификатор инвойса или orderId (payload)
    * @returns - информация о статусе платежа
    */
-  async checkPaymentStatus(orderId: string): Promise<{ status: string, success: boolean }> {
+  async checkPaymentStatus(id: string): Promise<{ status: string, success: boolean }> {
     // Максимальное количество попыток
     const maxRetries = 3;
     let retryCount = 0;
@@ -344,47 +267,99 @@ export const rocketPayService = {
     // Функция для выполнения запроса с повторными попытками
     const executeWithRetry = async (): Promise<{ status: string, success: boolean }> => {
       try {
-        // Получаем список счетов и ищем нужный по payload
-        console.log(`Отправка запроса на получение списка tg-invoices (попытка ${retryCount + 1}/${maxRetries}):`, {
-          url: `${API_ENDPOINT}/tg-invoices`,
-          orderId: orderId
-        });
-
-        const response = await axios.get(`${API_ENDPOINT}/tg-invoices`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          timeout: 10000 // Устанавливаем таймаут в 10 секунд
-        });
-
-        if (response.data && response.data.success && response.data.data) {
-          // Ищем счет с нужным payload (orderId)
-          const invoice = response.data.data.find((inv: any) => inv.payload === orderId);
-          
-          if (invoice) {
+        // Получаем API ключ из переменных окружения
+        const apiKey = process.env.REACT_APP_XROCKET_API_KEY;
+        if (!apiKey) {
+          console.error('Отсутствует API ключ XRocket');
+          return {
+            status: 'error',
+            success: false,
+          };
+        }
+        
+        console.log(`Отправка запроса на проверку статуса инвойса (попытка ${retryCount + 1}/${maxRetries})`);
+        
+        // Определяем, является ли id инвойсом или payload (orderId)
+        // Если id содержит только цифры, считаем его инвойсом, иначе - payload
+        const isInvoiceId = /^\d+$/.test(id);
+        
+        let response;
+        if (isInvoiceId) {
+          // Получаем информацию о конкретном инвойсе по ID
+          console.log(`Проверка статуса по ID инвойса: ${id}`);
+          response = await axios.get(
+            `https://pay.xrocket.tg/api/tg-invoices/${id}`,
+            {
+              headers: {
+                'Rocket-Pay-Key': apiKey,
+                'Content-Type': 'application/json'
+              },
+              timeout: 10000 // Устанавливаем таймаут в 10 секунд
+            }
+          );
+        } else {
+          // Получаем информацию об инвойсе по payload (orderId)
+          console.log(`Проверка статуса по payload (orderId): ${id}`);
+          response = await axios.get(
+            `https://pay.xrocket.tg/api/tg-invoices?payload=${id}`,
+            {
+              headers: {
+                'Rocket-Pay-Key': apiKey,
+                'Content-Type': 'application/json'
+              },
+              timeout: 10000 // Устанавливаем таймаут в 10 секунд
+            }
+          );
+        }
+        
+        console.log('Ответ API при проверке статуса:', response.data);
+        
+        if (response.data && response.data.success) {
+          if (isInvoiceId && response.data.data) {
+            // Обработка ответа для запроса по ID инвойса
             // Преобразуем статус в понятный формат
             let status = 'unknown';
-            if (invoice.status === 'active') {
+            if (response.data.data.status === 'active') {
               status = 'PENDING';
-            } else if (invoice.totalActivations > 0) {
+            } else if (response.data.data.status === 'paid') {
               status = 'PAID';
-            } else {
+            } else if (response.data.data.status === 'expired') {
               status = 'CANCELLED';
             }
             
-            console.log(`Найден счет для заказа ${orderId}, статус: ${status}`);
+            console.log(`Статус инвойса ${id}: ${status}`);
             return {
               status: status,
               success: true,
             };
-          } else {
-            console.log(`Счет для заказа ${orderId} не найден в списке`);
+          } else if (!isInvoiceId && response.data.data) {
+            // Обработка ответа для запроса по payload (orderId)
+            // Ищем счет с нужным payload
+            const invoice = response.data.data.find((inv: any) => inv.payload === id);
+            
+            if (invoice) {
+              // Преобразуем статус в понятный формат
+              let status = 'unknown';
+              if (invoice.status === 'active') {
+                status = 'PENDING';
+              } else if (invoice.status === 'paid') {
+                status = 'PAID';
+              } else if (invoice.status === 'expired') {
+                status = 'CANCELLED';
+              }
+              
+              console.log(`Найден счет для заказа ${id}, статус: ${status}`);
+              return {
+                status: status,
+                success: true,
+              };
+            } else {
+              console.log(`Счет для заказа ${id} не найден в списке`);
+            }
           }
-        } else {
-          console.error('Ответ API не содержит данных о счетах:', response.data);
         }
         
+        console.error('Ответ API не содержит данных об инвойсе:', response.data);
         return {
           status: 'unknown',
           success: false,
@@ -397,13 +372,7 @@ export const rocketPayService = {
           console.error('Детали ошибки Axios при проверке статуса:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
-            data: error.response?.data,
-            headers: error.response?.headers,
-            config: {
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: error.config?.headers
-            }
+            data: error.response?.data
           });
           
           // Если ошибка связана с сетью или таймаутом, повторяем запрос

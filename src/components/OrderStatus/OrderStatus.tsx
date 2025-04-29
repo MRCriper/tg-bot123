@@ -192,6 +192,7 @@ const OrderStatus: React.FC = () => {
       
       try {
         // Получаем статус заказа
+        // Примечание: в новой версии API мы используем orderId как payload для поиска инвойса
         const result = await rocketPayService.checkPaymentStatus(orderId);
         
         // Получаем курс TON/RUB для отображения

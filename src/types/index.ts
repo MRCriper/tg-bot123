@@ -78,6 +78,7 @@ export interface RocketPayResponse {
   success: boolean;
   paymentUrl?: string;
   error?: string;
+  invoiceId?: string; // ID инвойса для последующей проверки статуса
 }
 
 // Тип для темы приложения
