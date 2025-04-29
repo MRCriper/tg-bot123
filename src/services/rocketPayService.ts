@@ -142,7 +142,6 @@ export const rocketPayService = {
           'https://pay.xrocket.tg/tg-invoices',
           {
             amount: amountTon,
-            minPayment: amountTon,
             numPayments: 1,
             currency: "TONCOIN",
             description: `${paymentData.description} (${paymentData.amount} ₽)`,
