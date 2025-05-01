@@ -151,7 +151,7 @@ export const rocketPayService = {
             callbackUrl: redirectUrl,
             // Используем orderId как payload
             payload: `${paymentData.orderId}`,
-            expiredIn: 15
+            expiredIn: 300
           },
           {
             headers: {
