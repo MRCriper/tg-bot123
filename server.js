@@ -26,7 +26,7 @@ app.use(bodyParser.json());
 const ROCKET_PAY_SECRET_KEY = process.env.ROCKET_PAY_SECRET_KEY || process.env.REACT_APP_ROCKET_PAY_SECRET_KEY;
 const XROCKET_API_KEY = process.env.XROCKET_API_KEY || process.env.REACT_APP_XROCKET_API_KEY || ROCKET_PAY_SECRET_KEY;
 // Убираем слеш в конце URL, если он есть
-const ROCKET_PAY_API_URL = (process.env.ROCKET_PAY_API_URL || process.env.REACT_APP_ROCKET_PAY_API_URL || 'https://pay.xrocket.tg/api').replace(/\/$/, '');
+const ROCKET_PAY_API_URL = (process.env.ROCKET_PAY_API_URL || process.env.REACT_APP_ROCKET_PAY_API_URL || 'https://pay.xrocket.tg/').replace(/\/$/, '');
 
 // Добавляем дополнительное логирование для отладки
 console.log('Полный URL API:', ROCKET_PAY_API_URL);
@@ -40,7 +40,7 @@ console.log('Rocket Pay API Key установлен:', ROCKET_PAY_SECRET_KEY ? 
 console.log('XRocket API Key установлен:', XROCKET_API_KEY ? 'Да' : 'Нет');
 
 // Прокси для создания tg-invoices
-app.post('/api/tg-invoices', async (req, res) => {
+app.post('/tg-invoices', async (req, res) => {
   try {
     console.log('Получен запрос на создание tg-invoice');
     console.log('Данные запроса:', req.body);
@@ -121,7 +121,7 @@ app.post('/api/tg-invoices', async (req, res) => {
 });
 
 // Прокси для получения списка tg-invoices
-app.get('/api/tg-invoices', async (req, res) => {
+app.get('/tg-invoices', async (req, res) => {
   try {
     console.log('Получен запрос на получение списка tg-invoices');
 
@@ -176,7 +176,7 @@ app.get('/api/tg-invoices', async (req, res) => {
 });
 
 // Прокси для получения информации о tg-invoice по ID
-app.get('/api/tg-invoices/:id', async (req, res) => {
+app.get('/tg-invoices/:id', async (req, res) => {
   try {
     const invoiceId = req.params.id;
     console.log(`Получен запрос на получение информации о tg-invoice с ID: ${invoiceId}`);
