@@ -139,7 +139,7 @@ export const rocketPayService = {
         });
 
         const response = await axios.post(
-          'https://pay.xrocket.tg/tg-invoices',
+          '/tg-invoices',
           {
             amount: amountTon,
             numPayments: 1,
@@ -324,7 +324,7 @@ export const rocketPayService = {
         //   // Получаем информацию о конкретном инвойсе по ID
           console.log(`Проверка статуса по ID инвойса: ${id}`);
           response = await axios.get(
-            `https://pay.xrocket.tg/tg-invoices/${id}`,
+            `/tg-invoices/${id}`,
             {
               headers: {
                 'Rocket-Pay-Key': apiKey,
