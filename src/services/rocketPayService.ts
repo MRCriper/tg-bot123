@@ -52,7 +52,7 @@ export const rocketPayService = {
     } catch (error) {
       console.error('Ошибка при конвертации RUB в TON:', error);
       // В случае ошибки делаем примерную конвертацию
-      const approximateRate = 350; // Примерный курс TON/RUB
+      const approximateRate = 290; // Примерный курс TON/RUB
       return parseFloat((amountRub / approximateRate).toFixed(9));
     }
   },
@@ -151,7 +151,7 @@ export const rocketPayService = {
             callbackUrl: redirectUrl,
             // Используем orderId как payload
             payload: `${paymentData.orderId}`,
-            expiredIn: 300
+            expiredIn: 15
           },
           {
             headers: {
